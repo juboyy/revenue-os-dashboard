@@ -1,8 +1,8 @@
 "use client";
 
-import OfficeFloor from "@/components/OfficeFloor";
-import MetricsSidebar from "@/components/MetricsSidebar";
-import { useAgents } from "@/lib/hooks";
+import OfficeFloor from "../components/OfficeFloor";
+import MetricsSidebar from "../components/MetricsSidebar";
+import { useAgents } from "../lib/hooks";
 
 export default function HomePage() {
   const { agents, isLoading } = useAgents();

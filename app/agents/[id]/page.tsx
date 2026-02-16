@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useAgent } from "@/lib/hooks";
-import type { AgentStatus } from "@/lib/types";
+import { useAgent } from "../../../lib/hooks";
+import type { AgentStatus } from "../../../lib/types";
 
 /* ─── Status badge ─── */
 function StatusBadge({ status }: { status: AgentStatus }) {

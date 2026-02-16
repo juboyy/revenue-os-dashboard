@@ -1,6 +1,6 @@
 "use client";
 
-import type { AgentRecord } from "@/lib/types";
+import type { AgentRecord } from "../lib/types";
 import AgentStation from "./AgentStation";
 
 /* ─── Room config ─── */

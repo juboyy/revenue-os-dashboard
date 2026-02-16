@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { AgentRecord, AgentStatus } from "@/lib/types";
+import type { AgentRecord, AgentStatus } from "../lib/types";
 
 /* ─── Helpers ─── */
 function statusClass(s: AgentStatus) {

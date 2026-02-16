@@ -1,6 +1,6 @@
 "use client";
 
-import { useMetrics } from "@/lib/hooks";
+import { useMetrics } from "../lib/hooks";
 
 /* ─── Single metric card ─── */
 function MetricCard({
