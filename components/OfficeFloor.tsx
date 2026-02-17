@@ -3,96 +3,59 @@
 import type { AgentRecord } from "../lib/types";
 import AgentStation from "./AgentStation";
 
-/* ─── Room config ─── */
-const ROOMS: Record<string, { label: string; icon: string; positions: string[] }> = {
-  "ponte-de-comando": { label: "Ponte de Comando", icon: "🏴‍☠️", positions: ["shanks"] },
-  forja: { label: "A Forja", icon: "⚒️", positions: ["zoro"] },
-  estaleiro: { label: "Estaleiro", icon: "🔧", positions: ["franky"] },
-  laboratorio: { label: "Laboratório", icon: "🧪", positions: ["chopper"] },
-  tesouraria: { label: "Tesouraria", icon: "💎", positions: ["nami"] },
-  biblioteca: { label: "Biblioteca", icon: "📖", positions: ["robin"] },
-  "sala-de-maquinas": { label: "Sala de Máquinas", icon: "⚙️", positions: ["jinbe"] },
-  "torre-de-vigia": { label: "Torre de Vigia", icon: "🔭", positions: ["usopp"] },
-  cozinha: { label: "Cozinha", icon: "🔥", positions: ["sanji"] },
+const DEPARTMENTS = {
+  "COMMAND": ["shanks"],
+  "ENGINEERING": ["zoro", "jinbe", "franky"],
+  "OPERATIONS": ["nami", "billing"],
+  "RESEARCH": ["chopper", "robin"],
+  "COMMS": ["sanji"]
 };
 
-/* ─── Water cooler / interactions ─── */
-function WaterCooler({ agents }: { agents: AgentRecord[] }) {
-  const active = agents.filter(
-    (a) => a.status === "active" || a.status === "working"
-  );
-  return (
-    <div className="glass rounded-2xl p-4 col-span-full">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-2xl">🚰</span>
-        <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">
-          Bebedouro — Crew Chat
-        </h3>
-        <span className="ml-auto text-[11px] text-gray-500 font-mono">
-          {active.length} online
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {agents.map((a) => (
-          <div
-            key={a.id}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gray-800/60 border border-gray-700/50 text-xs"
-          >
-            <span className="text-base">{a.emoji}</span>
-            <span className={a.status === "idle" ? "text-gray-500" : "text-gray-300"}>
-              {a.name}
-            </span>
-            <span className={`status-dot w-2 h-2 status-${a.status}`} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Office Floor ─── */
 export default function OfficeFloor({ agents }: { agents: AgentRecord[] }) {
   const agentMap = new Map(agents.map((a) => [a.id, a]));
 
   return (
-    <div className="office-grid-bg min-h-screen">
-      {/* Ship header */}
-      <div className="text-center pt-6 pb-2">
-        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-          ⛵ Thousand Sunny
-        </h1>
-        <p className="text-xs text-gray-500 font-mono mt-1 tracking-widest uppercase">
-          revenue-OS Digital Office • {agents.length} crew members
-        </p>
+    <div className="p-6 md:p-8 max-w-[1600px] mx-auto w-full h-full overflow-y-auto">
+      {/* Header HUD */}
+      <div className="flex justify-between items-end mb-8 border-b border-cyber-cyan/20 pb-4">
+        <div>
+          <h1 className="text-4xl font-bold text-white tracking-tighter text-glow">
+            THOUSAND<span className="text-cyber-cyan">SUNNY</span>
+          </h1>
+          <p className="text-xs text-cyber-cyan/60 tracking-[0.3em] mt-1">
+            REVENUE_OS // TACTICAL_DASHBOARD
+          </p>
+        </div>
+        <div className="text-right hidden md:block">
+          <div className="text-xs text-gray-500">SYSTEM STATUS</div>
+          <div className="text-cyber-cyan font-bold animate-pulse">ONLINE</div>
+        </div>
       </div>
 
-      {/* Room Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 max-w-7xl mx-auto">
-        {Object.entries(ROOMS).map(([roomId, room]) => {
-          const roomAgents = room.positions
-            .map((id) => agentMap.get(id))
-            .filter(Boolean) as AgentRecord[];
-
-          return (
-            <div key={roomId} className="relative">
-              {/* Room label */}
-              <div className="room-label mb-2 flex items-center gap-1.5 pl-1">
-                <span className="text-base">{room.icon}</span>
-                {room.label}
-              </div>
-
-              {/* Agents in this room */}
-              {roomAgents.map((agent, i) => (
-                <AgentStation key={agent.id} agent={agent} index={i} />
-              ))}
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {Object.entries(DEPARTMENTS).map(([dept, ids]) => (
+          <div key={dept} className="relative group">
+            {/* Department Label */}
+            <div className="absolute -top-3 left-4 bg-void px-2 text-[10px] text-cyber-cyan border border-cyber-cyan/30 uppercase tracking-widest z-10">
+              SECTOR: {dept}
             </div>
-          );
-        })}
-      </div>
+            
+            <div className="border border-gray-800 p-6 pt-8 bg-glass-100 backdrop-blur-sm grid gap-6 relative">
+              {/* Corner Accents */}
+              <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-cyber-cyan" />
+              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyber-cyan" />
+              <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyber-cyan" />
+              <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyber-cyan" />
 
-      {/* Water cooler */}
-      <div className="max-w-7xl mx-auto px-4 pb-4">
-        <WaterCooler agents={agents} />
+              {ids.map((id, i) => {
+                const agent = agentMap.get(id);
+                if (!agent) return null;
+                return <AgentStation key={id} agent={agent} index={i} />;
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

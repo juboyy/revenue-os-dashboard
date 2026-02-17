@@ -2,138 +2,77 @@
 
 import { useMetrics } from "../lib/hooks";
 
-/* ─── Single metric card ─── */
-function MetricCard({
-  label,
-  value,
-  icon,
-  color,
-  suffix,
-}: {
-  label: string;
-  value: number;
-  icon: string;
-  color: string;
-  suffix?: string;
-}) {
+function MetricRow({ label, value, color = "text-cyber-cyan" }: { label: string; value: string | number; color?: string }) {
   return (
-    <div className="glass rounded-xl p-4 flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <span className="text-xl">{icon}</span>
-        <span className="text-[11px] uppercase tracking-widest text-gray-500 font-mono">
-          {label}
-        </span>
+    <div className="flex justify-between items-center border-b border-gray-800 py-2">
+      <span className="text-[10px] text-gray-500 uppercase tracking-widest">{label}</span>
+      <span className={`font-mono font-bold ${color}`}>{value}</span>
+    </div>
+  );
+}
+
+function ProgressBar({ label, percent }: { label: string; percent: number }) {
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between text-[9px] uppercase mb-1 text-gray-500">
+        <span>{label}</span>
+        <span>{percent}%</span>
       </div>
-      <div className="metric-value">
-        <span className={`text-2xl font-bold font-mono ${color}`}>
-          {suffix === "$"
-            ? `$${value.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
-            : value.toLocaleString()}
-        </span>
+      <div className="h-1 w-full bg-gray-800 relative overflow-hidden">
+        <div 
+          className="h-full bg-cyber-cyan shadow-neon-cyan absolute top-0 left-0"
+          style={{ width: `${percent}%` }} 
+        />
       </div>
     </div>
   );
 }
 
-/* ─── Uptime bar ─── */
-function UptimeBar() {
-  return (
-    <div className="glass rounded-xl p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] uppercase tracking-widest text-gray-500 font-mono flex items-center gap-2">
-          <span className="text-xl">⏱️</span> Uptime
-        </span>
-        <span className="text-sm font-mono text-emerald-400 font-bold">100%</span>
-      </div>
-      <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full w-full" />
-      </div>
-      <p className="text-[10px] text-gray-600 mt-1 font-mono">
-        Supabase + Vercel • Zero downtime
-      </p>
-    </div>
-  );
-}
-
-/* ─── Cron jobs ─── */
-function CronJobs() {
-  const jobs = [
-    { name: "standup-report", schedule: "0 9 * * 1-5", next: "Mon 09:00 UTC", agent: "shanks" },
-    { name: "metrics-digest", schedule: "0 */6 * * *", next: "~6h", agent: "chopper" },
-    { name: "health-check", schedule: "*/5 * * * *", next: "~5min", agent: "jinbe" },
-    { name: "content-pipeline", schedule: "0 10,16 * * *", next: "Mon 10:00 UTC", agent: "sanji" },
-    { name: "budget-sweep", schedule: "0 0 * * *", next: "00:00 UTC", agent: "nami" },
-  ];
-
-  return (
-    <div className="glass rounded-xl p-4">
-      <h3 className="text-[11px] uppercase tracking-widest text-gray-500 font-mono mb-3 flex items-center gap-2">
-        <span className="text-xl">⏰</span> Cron Jobs
-      </h3>
-      <div className="space-y-2">
-        {jobs.map((j) => (
-          <div key={j.name} className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-              <span className="text-gray-300 font-mono">{j.name}</span>
-            </div>
-            <span className="text-gray-500 font-mono text-[10px]">{j.next}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Sidebar ─── */
 export default function MetricsSidebar() {
   const { metrics, isLoading } = useMetrics();
 
-  if (isLoading) {
-    return (
-      <aside className="space-y-3 animate-pulse">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="glass rounded-xl h-24" />
-        ))}
-      </aside>
-    );
-  }
+  if (isLoading) return <div className="animate-pulse h-full bg-gray-900/50" />;
 
   return (
-    <aside className="space-y-3" style={{ animation: "slideInRight 0.5s ease-out" }}>
-      <MetricCard
-        label="Tasks Completed"
-        value={metrics.totalTasksCompleted}
-        icon="✅"
-        color="text-emerald-400"
-      />
-      <MetricCard
-        label="Tasks Pending"
-        value={metrics.totalTasksPending}
-        icon="📋"
-        color="text-amber-400"
-      />
-      <MetricCard
-        label="Tasks Blocked"
-        value={metrics.totalTasksBlocked}
-        icon="🚫"
-        color="text-red-400"
-      />
-      <MetricCard
-        label="Tokens Today"
-        value={metrics.totalTokensToday}
-        icon="🪙"
-        color="text-cyan-400"
-        suffix="$"
-      />
-      <MetricCard
-        label="Agents Active"
-        value={metrics.activeAgents}
-        icon="🏴‍☠️"
-        color="text-blue-400"
-      />
-      <UptimeBar />
-      <CronJobs />
+    <aside className="w-80 hidden lg:flex flex-col border-l border-gray-800 bg-obsidian/90 backdrop-blur-md p-6 h-screen sticky top-0 overflow-y-auto">
+      {/* Header */}
+      <div className="mb-6 pb-2 border-b-2 border-cyber-cyan">
+        <h2 className="text-sm font-bold text-white uppercase tracking-widest">
+          DIAGNOSTICS
+        </h2>
+        <p className="text-[9px] text-gray-500 font-mono">LIVE TELEMETRY FEED</p>
+      </div>
+
+      {/* Main Metrics */}
+      <div className="mb-8">
+        <MetricRow label="Active Agents" value={metrics.activeAgents} color="text-cyber-yellow" />
+        <MetricRow label="Tasks Done" value={metrics.totalTasksCompleted} />
+        <MetricRow label="Tasks Pending" value={metrics.totalTasksPending} color="text-cyber-purple" />
+        <MetricRow label="Tokens Today" value={metrics.totalTokensToday.toLocaleString()} />
+      </div>
+
+      {/* System Health */}
+      <div className="mb-8 p-4 border border-gray-800 bg-void/50">
+        <h3 className="text-[10px] text-cyber-cyan mb-3 uppercase tracking-widest border-b border-gray-800 pb-1">
+          System Resources
+        </h3>
+        <ProgressBar label="CPU Load" percent={42} />
+        <ProgressBar label="Memory" percent={68} />
+        <ProgressBar label="Network" percent={24} />
+      </div>
+
+      {/* Log Feed Mockup */}
+      <div className="flex-1 font-mono text-[9px] text-gray-600 overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-obsidian pointer-events-none" />
+        <div className="space-y-1 opacity-70">
+          <p>{">"} INITIATING HANDSHAKE...</p>
+          <p>{">"} CONNECTED TO SUPABASE [OK]</p>
+          <p>{">"} SYNCING AGENT STATES...</p>
+          <p>{">"} CRON_JOB: INFRA_HEALTH [Running]</p>
+          <p>{">"} PACKET_LOSS: 0.0%</p>
+          <p>{">"} SYSTEM STABLE</p>
+        </div>
+      </div>
     </aside>
   );
 }
