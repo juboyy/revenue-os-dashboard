@@ -14,10 +14,10 @@ const statusColor: Record<string, string> = {
 
 const statusLabel: Record<string, string> = {
   active: "Online",
-  working: "Working",
-  idle: "Idle",
-  error: "Error",
-  sleeping: "Sleep",
+  working: "Trabalhando",
+  idle: "Ocioso",
+  error: "Erro",
+  sleeping: "Dormindo",
 };
 
 function formatTokens(n: number): string {
@@ -34,18 +34,18 @@ export default function HomePage() {
   const { agents, monitoring } = useDashboardStore();
 
   const activeAgents = agents.filter(a => a.status === "active" || a.status === "working").length;
-  const totalTasks = agents.reduce((sum, a) => sum + a.tasks_completed, 0);
+  const totalTasks = agents.reduce((sum, a) => sum + (a.tasks_completed ?? 0), 0);
   const totalTokens = monitoring?.totals.totalTokens ?? 0;
   const totalCost = monitoring?.totals.totalCost ?? 0;
   const errorRate = monitoring ? ((monitoring.daily.reduce((s, d) => s + d.errors, 0) / Math.max(monitoring.daily.reduce((s, d) => s + d.messages, 0), 1)) * 100) : 0;
 
   const kpis = [
-    { label: "Active Agents", value: `${activeAgents}/${agents.length}`, icon: "🟢", accent: "text-accent-green" },
-    { label: "Tasks Done", value: totalTasks.toString(), icon: "✅", accent: "text-accent-blue" },
-    { label: "Tokens Used", value: formatTokens(totalTokens), icon: "🔤", accent: "text-accent-purple" },
-    { label: "Total Cost", value: formatCost(totalCost), icon: "💰", accent: "text-accent-amber" },
-    { label: "Latency P95", value: `${monitoring?.latency?.p95Ms ?? "—"}ms`, icon: "⚡", accent: "text-accent-cyan" },
-    { label: "Error Rate", value: `${errorRate.toFixed(1)}%`, icon: "🔴", accent: errorRate > 5 ? "text-accent-red" : "text-accent-green" },
+    { label: "Agentes Ativos", value: `${activeAgents}/${agents.length}`, icon: "🟢", accent: "text-accent-green" },
+    { label: "Tarefas Feitas", value: totalTasks.toString(), icon: "✅", accent: "text-accent-blue" },
+    { label: "Tokens Usados", value: formatTokens(totalTokens), icon: "🔤", accent: "text-accent-purple" },
+    { label: "Custo Total", value: formatCost(totalCost), icon: "💰", accent: "text-accent-amber" },
+    { label: "Latência P95", value: `${monitoring?.latency?.p95Ms ?? "—"}ms`, icon: "⚡", accent: "text-accent-cyan" },
+    { label: "Taxa de Erros", value: `${errorRate.toFixed(1)}%`, icon: "🔴", accent: errorRate > 5 ? "text-accent-red" : "text-accent-green" },
   ];
 
   return (
@@ -54,15 +54,15 @@ export default function HomePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <span className="text-3xl">🎯</span> Command Center
+            <span className="text-3xl">🎯</span> Central de Comando
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-mono">
-            REVENUE_OS // MULTI-AGENT TACTICAL DASHBOARD
+            REVENUE_OS // PAINEL TÁTICO MULTI-AGENTE
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
           <div className="w-2 h-2 rounded-full bg-accent-green animate-pulse" />
-          SYSTEM_OPERATIONAL
+          SISTEMA_OPERACIONAL
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export default function HomePage() {
         {/* Agent Status Grid */}
         <div className="lg:col-span-2 glass-card p-5">
           <h2 className="text-xs uppercase tracking-widest text-gray-500 font-mono mb-4 flex items-center gap-2">
-            <span className="text-base">👥</span> Crew Status
+            <span className="text-base">👥</span> Status da Tripulação
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {agents.map((agent, i) => {
@@ -110,16 +110,16 @@ export default function HomePage() {
                       </div>
                       <p className="text-[11px] text-gray-500 truncate">{agent.department}</p>
                       <p className="text-[10px] text-accent-blue/70 truncate mt-0.5 font-mono">
-                        {agent.current_task || "AWAITING_COMMANDS"}
+                        {agent.current_task || "AGUARDANDO_COMANDOS"}
                       </p>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-[10px]">
-                    <span className="text-accent-purple font-mono">Lv.{lvl.level}</span>
+                    <span className="text-accent-purple font-mono">Nv.{lvl.level}</span>
                     <div className="flex-1 xp-bar">
                       <div className="xp-bar-fill" style={{ width: `${lvl.progress}%` }} />
                     </div>
-                    <span className="text-gray-600 font-mono">{agent.xp}xp</span>
+                    <span className="text-gray-600 font-mono">{agent.xp ?? 0}xp</span>
                   </div>
                 </motion.div>
               );
@@ -130,13 +130,13 @@ export default function HomePage() {
         {/* Activity Feed / Quick Info */}
         <div className="glass-card p-5 space-y-4">
           <h2 className="text-xs uppercase tracking-widest text-gray-500 font-mono flex items-center gap-2">
-            <span className="text-base">📡</span> Live Feed
+            <span className="text-base">📡</span> Feed ao Vivo
           </h2>
 
           {/* Provider Quick View */}
           {monitoring && (
             <div className="space-y-2">
-              <h3 className="text-[10px] uppercase tracking-widest text-gray-600">Top Providers</h3>
+              <h3 className="text-[10px] uppercase tracking-widest text-gray-600">Principais Provedores</h3>
               {monitoring.byProvider.slice(0, 3).map((p) => (
                 <div key={p.provider} className="flex items-center justify-between text-xs">
                   <span className="text-gray-400 truncate">{p.provider}</span>
@@ -152,7 +152,7 @@ export default function HomePage() {
           {/* Top Tools */}
           {monitoring && (
             <div className="space-y-2">
-              <h3 className="text-[10px] uppercase tracking-widest text-gray-600">Most Used Tools</h3>
+              <h3 className="text-[10px] uppercase tracking-widest text-gray-600">Ferramentas Mais Usadas</h3>
               {monitoring.tools.tools.slice(0, 5).map((t) => (
                 <div key={t.name} className="flex items-center gap-2 text-xs">
                   <span className="text-accent-cyan font-mono text-[11px]">⚙</span>
@@ -165,7 +165,7 @@ export default function HomePage() {
 
           {/* Recent Standup */}
           <div className="space-y-2">
-            <h3 className="text-[10px] uppercase tracking-widest text-gray-600">Latest Standup</h3>
+            <h3 className="text-[10px] uppercase tracking-widest text-gray-600">Último Standup</h3>
             <StandupFeed />
           </div>
         </div>

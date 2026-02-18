@@ -8,15 +8,15 @@ const RARITY_COLORS = { common: "#6b7280", rare: "#3b82f6", epic: "#8b5cf6", leg
 
 export default function LeaderboardPage() {
   const { agents } = useDashboardStore();
-  const sorted = [...agents].sort((a, b) => b.xp - a.xp);
+  const sorted = [...agents].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0));
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-          <span className="text-3xl">🏆</span> Leaderboard
+          <span className="text-3xl">🏆</span> Ranking
         </h1>
-        <p className="text-sm text-gray-500 mt-1 font-mono">XP_RANKING // ACHIEVEMENTS // CREW_STATS</p>
+        <p className="text-sm text-gray-500 mt-1 font-mono">RANKING_XP // CONQUISTAS // STATS_TRIPULAÇÃO</p>
       </div>
 
       {/* Top 3 Podium */}
@@ -39,8 +39,8 @@ export default function LeaderboardPage() {
               <span className="text-4xl">{agent.emoji}</span>
               <h3 className="text-sm font-bold text-white mt-2">{agent.name}</h3>
               <p className="text-[10px] text-gray-500">{agent.department}</p>
-              <div className="mt-3 text-xl font-bold text-accent-purple">{agent.xp.toLocaleString()} XP</div>
-              <div className="text-[10px] text-accent-blue font-mono">Lv.{lvl.level} {lvl.title}</div>
+              <div className="mt-3 text-xl font-bold text-accent-purple">{(agent.xp ?? 0).toLocaleString()} XP</div>
+              <div className="text-[10px] text-accent-blue font-mono">Nv.{lvl.level} {lvl.title}</div>
               <div className="mt-2 xp-bar">
                 <div className="xp-bar-fill animate-xp-fill" style={{ width: `${lvl.progress}%` }} />
               </div>
@@ -51,7 +51,7 @@ export default function LeaderboardPage() {
 
       {/* Full Ranking Table */}
       <div className="glass-card p-5">
-        <h2 className="text-xs uppercase tracking-widest text-gray-500 font-mono mb-4">Full Ranking</h2>
+        <h2 className="text-xs uppercase tracking-widest text-gray-500 font-mono mb-4">Ranking Completo</h2>
         <div className="space-y-2">
           {sorted.map((agent, i) => {
             const lvl = getLevelFromXP(agent.xp);
@@ -69,23 +69,23 @@ export default function LeaderboardPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-white">{agent.name}</span>
                     <span className="text-[10px] text-accent-blue font-mono px-1.5 py-0.5 rounded bg-accent-blue/10">
-                      Lv.{lvl.level} {lvl.title}
+                      Nv.{lvl.level} {lvl.title}
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-500">{agent.department}</p>
                 </div>
                 <div className="flex items-center gap-6 text-xs font-mono">
                   <div className="text-center">
-                    <div className="text-accent-purple font-bold">{agent.xp.toLocaleString()}</div>
+                    <div className="text-accent-purple font-bold">{(agent.xp ?? 0).toLocaleString()}</div>
                     <div className="text-[9px] text-gray-600">XP</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-accent-green">{agent.tasks_completed}</div>
-                    <div className="text-[9px] text-gray-600">TASKS</div>
+                    <div className="text-accent-green">{agent.tasks_completed ?? 0}</div>
+                    <div className="text-[9px] text-gray-600">TAREFAS</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-accent-amber">{agent.streak_days}d</div>
-                    <div className="text-[9px] text-gray-600">STREAK</div>
+                    <div className="text-accent-amber">{agent.streak_days ?? 0}d</div>
+                    <div className="text-[9px] text-gray-600">SEQUÊNCIA</div>
                   </div>
                   <div className="w-24">
                     <div className="xp-bar">
