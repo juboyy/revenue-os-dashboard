@@ -118,7 +118,7 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              {Object.entries(agent.stats).map(([stat, val]) => (
+              {Object.entries(agent.stats ?? { speed: 0, accuracy: 0, versatility: 0, reliability: 0, creativity: 0 }).map(([stat, val]) => (
                 <div key={stat} className="flex items-center gap-2 text-[11px]">
                   <span className="text-gray-500 w-20 capitalize">{stat}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-ocean-800 overflow-hidden">

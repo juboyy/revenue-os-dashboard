@@ -60,16 +60,18 @@ export const LEVEL_TITLES = [
   "Legend",        // 7
 ] as const;
 
-export function getLevelFromXP(xp: number): { level: number; title: string; progress: number; nextXP: number } {
+export function getLevelFromXP(xp: number | undefined | null): { level: number; title: string; progress: number; nextXP: number } {
+  const safeXP = xp ?? 0;
   const thresholds = [0, 100, 300, 600, 1200, 2500, 5000, 10000];
   let level = 0;
   for (let i = thresholds.length - 1; i >= 0; i--) {
-    if (xp >= thresholds[i]) { level = i; break; }
+    if (safeXP >= thresholds[i]) { level = i; break; }
   }
   const current = thresholds[level];
   const next = thresholds[level + 1] ?? thresholds[level] * 2;
-  const progress = ((xp - current) / (next - current)) * 100;
-  return { level, title: LEVEL_TITLES[level] || "Legend", progress: Math.min(progress, 100), nextXP: next };
+  const range = next - current || 1;
+  const progress = ((safeXP - current) / range) * 100;
+  return { level, title: LEVEL_TITLES[level] || "Legend", progress: Math.min(Math.max(progress, 0), 100), nextXP: next };
 }
 
 // ━━━ Monitoring & Usage ━━━

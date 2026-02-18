@@ -221,7 +221,8 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
   const color = DEPT_COLORS[agent.department] || "#6b7280";
   const isActive = agent.status === "active" || agent.status === "working";
   const statusLabel = agent.status === "active" ? "Ativo" : agent.status === "working" ? "Trabalhando" : agent.status === "error" ? "Erro" : agent.status === "sleeping" ? "Dormindo" : "Ocioso";
-  const avgStat = Math.round(Object.values(agent.stats).reduce((s, v) => s + v, 0) / 5);
+  const safeStats = agent.stats ?? { speed: 0, accuracy: 0, versatility: 0, reliability: 0, creativity: 0 };
+  const avgStat = Math.round(Object.values(safeStats).reduce((s, v) => s + v, 0) / 5);
   const perfTier = avgStat >= 85 ? "S" : avgStat >= 70 ? "A" : avgStat >= 55 ? "B" : avgStat >= 40 ? "C" : "D";
   const tierColor = perfTier === "S" ? "#f59e0b" : perfTier === "A" ? "#10b981" : perfTier === "B" ? "#3b82f6" : perfTier === "C" ? "#f97316" : "#ef4444";
 
@@ -256,18 +257,18 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
       {/* Radar Chart */}
       <div>
         <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1 text-center">Radar de Performance</h4>
-        <RadarChart stats={agent.stats} color={color} />
+        <RadarChart stats={safeStats} color={color} />
       </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Tarefas", value: agent.tasks_completed, c: "text-green-400", icon: "✅" },
-          { label: "Sequência", value: `${agent.streak_days}d`, c: "text-amber-400", icon: "🔥" },
-          { label: "Tokens", value: `${(agent.tokens_today / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
-          { label: "Bloqueado", value: agent.tasks_blocked, c: "text-red-400", icon: "🚫" },
+          { label: "Tarefas", value: agent.tasks_completed ?? 0, c: "text-green-400", icon: "✅" },
+          { label: "Sequência", value: `${agent.streak_days ?? 0}d`, c: "text-amber-400", icon: "🔥" },
+          { label: "Tokens", value: `${((agent.tokens_today ?? 0) / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
+          { label: "Bloqueado", value: agent.tasks_blocked ?? 0, c: "text-red-400", icon: "🚫" },
           { label: "Média Stats", value: avgStat, c: "text-purple-400", icon: "📊" },
-          { label: "Pendente", value: agent.tasks_pending, c: "text-yellow-400", icon: "⏳" },
+          { label: "Pendente", value: agent.tasks_pending ?? 0, c: "text-yellow-400", icon: "⏳" },
         ].map(k => (
           <div key={k.label} className="p-2.5 rounded-lg bg-ocean-900/50 text-center">
             <div className="text-sm mb-0.5">{k.icon}</div>
@@ -278,11 +279,11 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
       </div>
 
       {/* Achievements */}
-      {agent.achievements.length > 0 && (
+      {(agent.achievements ?? []).length > 0 && (
         <div>
-          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas ({agent.achievements.length})</h4>
+          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas ({(agent.achievements ?? []).length})</h4>
           <div className="grid grid-cols-4 gap-1.5">
-            {agent.achievements.map(a => (
+            {(agent.achievements ?? []).map(a => (
               <div key={a.id} title={`${a.name}: ${a.description}`}
                 className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg"
                 style={{ background: `${RARITY_COLORS[a.rarity]}10`, border: `1px solid ${RARITY_COLORS[a.rarity]}25` }}>

@@ -753,10 +753,10 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Tarefas", value: agent.tasks_completed, c: "text-green-400", icon: "✅" },
-          { label: "Sequência", value: `${agent.streak_days}d`, c: "text-amber-400", icon: "🔥" },
-          { label: "Tokens", value: `${(agent.tokens_today / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
-          { label: "Bloqueado", value: agent.tasks_blocked, c: "text-red-400", icon: "🚫" },
+          { label: "Tarefas", value: agent.tasks_completed ?? 0, c: "text-green-400", icon: "✅" },
+          { label: "Sequência", value: `${agent.streak_days ?? 0}d`, c: "text-amber-400", icon: "🔥" },
+          { label: "Tokens", value: `${((agent.tokens_today ?? 0) / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
+          { label: "Bloqueado", value: agent.tasks_blocked ?? 0, c: "text-red-400", icon: "🚫" },
         ].map(k => (
           <div key={k.label} className="p-2 rounded-lg bg-ocean-900/50 text-center">
             <div className="text-sm">{k.icon}</div>
@@ -769,7 +769,7 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* Stats Bars */}
       <div className="space-y-1.5">
         <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Estatísticas</h4>
-        {Object.entries(agent.stats).map(([stat, val]) => (
+        {Object.entries(agent.stats ?? { speed: 0, accuracy: 0, versatility: 0, reliability: 0, creativity: 0 }).map(([stat, val]) => (
           <div key={stat} className="flex items-center gap-1.5">
             <span className="text-gray-500 w-16 capitalize text-[9px]">{stat}</span>
             <div className="flex-1 h-1.5 rounded-full bg-ocean-800 overflow-hidden">
@@ -786,11 +786,11 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       </div>
 
       {/* Achievements */}
-      {agent.achievements.length > 0 && (
+      {(agent.achievements ?? []).length > 0 && (
         <div>
           <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas</h4>
           <div className="flex flex-wrap gap-1">
-            {agent.achievements.map(a => (
+            {(agent.achievements ?? []).map(a => (
               <span key={a.id} title={`${a.name}: ${a.description}`}
                 className="text-sm p-1 rounded border"
                 style={{ borderColor: `${RARITY_COLORS[a.rarity]}30`, background: `${RARITY_COLORS[a.rarity]}08` }}>{a.icon}</span>
