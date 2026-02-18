@@ -577,9 +577,9 @@ function drawOutdoorDecorations(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 // ══════════════════════════════════════════════════════════
-// CHARACTER DRAWING — Gather-style chibi pixel art (1.6x scale)
+// CHARACTER DRAWING — Gather-style chibi pixel art
 // ══════════════════════════════════════════════════════════
-const SPRITE_SCALE = 1.0;
+const SPRITE_SCALE = 1.2;
 
 function drawCharacter(
   ctx: CanvasRenderingContext2D, px: number, py: number,
@@ -598,19 +598,31 @@ function drawCharacter(
   const walkPhase = Math.sin(frame * 0.3);
 
   // ── Shadow ──
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.beginPath();
   ctx.ellipse(0, 24, 14, 5, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // ── Status glow aura (for active/working agents) ──
+  if (statusColor === "#10b981" || statusColor === "#3b82f6") {
+    ctx.save();
+    const pulse = 0.08 + Math.sin(frame * 0.06) * 0.04;
+    ctx.fillStyle = `${statusColor}${Math.round(pulse * 255).toString(16).padStart(2, '0')}`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 22, 28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // ── Selection ring ──
   if (isSelected || isHovered) {
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(0, 24, 18, 7, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = isSelected ? "#3b82f6" : "rgba(100,100,200,0.5)";
-    ctx.lineWidth = isSelected ? 2 : 1;
-    if (isSelected) { ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 8; }
+    ctx.strokeStyle = isSelected ? "#3b82f6" : "rgba(255,255,255,0.6)";
+    ctx.lineWidth = isSelected ? 2.5 : 1.5;
+    if (isSelected) { ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 10; }
+    if (isHovered && !isSelected) { ctx.shadowColor = "rgba(255,255,255,0.4)"; ctx.shadowBlur = 6; }
     ctx.stroke();
     ctx.restore();
   }
@@ -637,19 +649,24 @@ function drawCharacter(
 
   // ── Body / Torso ──
   ctx.fillStyle = vis.shirt;
-  ctx.fillRect(-10, by - 4, 20, 16);
-  // Shirt highlights
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(-8, by - 3, 6, 2);
-  // Collar/neckline
-  ctx.fillStyle = "rgba(255,255,255,0.15)";
-  ctx.fillRect(-3, by - 4, 6, 3);
+  ctx.beginPath();
+  ctx.roundRect(-10, by - 4, 20, 16, 2);
+  ctx.fill();
+  // Shirt detail — collar
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.fillRect(-4, by - 4, 8, 3);
+  // Shirt shadow
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.fillRect(-9, by + 8, 18, 3);
+  // Shirt highlight stripe
+  ctx.fillStyle = "rgba(255,255,255,0.1)";
+  ctx.fillRect(-8, by - 2, 5, 2);
 
   // ── Arms ──
   ctx.fillStyle = vis.shirt;
   const armSwing = isMoving ? walkPhase * 3 : 0;
-  ctx.fillRect(-14, by - 2 + armSwing, 5, 14);
-  ctx.fillRect(9, by - 2 - armSwing, 5, 14);
+  ctx.beginPath(); ctx.roundRect(-14, by - 2 + armSwing, 5, 14, 2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(9, by - 2 - armSwing, 5, 14, 2); ctx.fill();
   // Hands (skin)
   ctx.fillStyle = vis.skin;
   ctx.fillRect(-14, by + 10 + armSwing, 5, 4);
@@ -658,8 +675,12 @@ function drawCharacter(
   // ── Head (large, chibi-proportioned) ──
   ctx.fillStyle = vis.skin;
   ctx.beginPath();
-  ctx.roundRect(-10, by - 24, 20, 22, 4);
+  ctx.roundRect(-10, by - 24, 20, 22, 5);
   ctx.fill();
+  // Cheek blush
+  ctx.fillStyle = "rgba(255,140,140,0.12)";
+  ctx.beginPath(); ctx.arc(-7, by - 10, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(7, by - 10, 3, 0, Math.PI * 2); ctx.fill();
 
   // ── Eyes ──
   const blink = Math.sin(frame * 0.07 + px * 0.02) > 0.93;
@@ -790,18 +811,18 @@ function drawCharacter(
       break;
   }
 
-  // ── Emoji above head ──
-  ctx.font = "14px serif";
+  // ── Emoji above head (key identifier) ──
+  ctx.font = "16px serif";
   ctx.textAlign = "center";
-  ctx.fillText(emoji, 0, by - 40);
+  ctx.fillText(emoji, 0, by - 42);
 
   // ── Interaction bubble ──
   if (interactionIcon) {
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
     ctx.beginPath();
-    ctx.roundRect(-16, by - 60, 32, 22, 8);
+    ctx.roundRect(-18, by - 68, 36, 24, 10);
     ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.1)";
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,0.95)";
