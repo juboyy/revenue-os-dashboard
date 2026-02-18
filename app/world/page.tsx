@@ -756,16 +756,19 @@ function createParticles(count: number): Particle[] {
 export default function WorldPage() {
   const { agents, tasks } = useDashboardStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
+  const [popupPos, setPopupPos] = useState<{x:number;y:number}>({x:0,y:0});
   const frameRef = useRef(0);
-  const particlesRef = useRef<Particle[]>(createParticles(40));
+  const particlesRef = useRef<Particle[]>(createParticles(60));
   const agentPosRef = useRef<Record<string, {
     x: number; y: number; tx: number; ty: number;
     speed: number; wait: number; moving: boolean;
+    currentRoom: string; // agents can be in ANY room
   }>>({});
 
-  // Init agent positions
+  // Init agent positions — start in their home room
   useEffect(() => {
     const pos = agentPosRef.current;
     agents.forEach((agent, i) => {
@@ -773,19 +776,37 @@ export default function WorldPage() {
       const room = ROOMS.find(r => r.id === agent.room) || ROOMS[i % ROOMS.length];
       const cx = (room.x + room.w / 2) * T;
       const cy = (room.y + room.h / 2) * T + 20;
-      const off = () => (Math.random() - 0.5) * (room.w - 3) * T * 0.5;
-      pos[agent.id] = { x: cx + off(), y: cy + off(), tx: cx + off(), ty: cy + off(), speed: 0.4 + Math.random() * 0.3, wait: Math.random() * 180, moving: false };
+      const off = (dim: number) => (Math.random() - 0.5) * dim * 0.4;
+      pos[agent.id] = {
+        x: cx + off(room.w * T), y: cy + off(room.h * T),
+        tx: cx + off(room.w * T), ty: cy + off(room.h * T),
+        speed: 0.5 + Math.random() * 0.4,
+        wait: Math.random() * 120,
+        moving: false,
+        currentRoom: room.id,
+      };
     });
   }, [agents]);
 
-  const pickTarget = useCallback((id: string, roomId: string) => {
-    const room = ROOMS.find(r => r.id === roomId) || ROOMS[0];
+  // Pick next target — 30% chance to visit a different room (common areas preferred)
+  const pickTarget = useCallback((id: string, homeRoomId: string) => {
     const p = agentPosRef.current[id];
     if (!p) return;
+    const shouldRoam = Math.random() < 0.3;
+    let targetRoom: RoomDef;
+    if (shouldRoam) {
+      const commonRooms = ROOMS.filter(r => r.type === "common");
+      const otherRooms = ROOMS.filter(r => r.id !== p.currentRoom);
+      const pool = Math.random() < 0.6 ? commonRooms : otherRooms;
+      targetRoom = pool[Math.floor(Math.random() * pool.length)] || ROOMS[0];
+    } else {
+      targetRoom = ROOMS.find(r => r.id === homeRoomId) || ROOMS[0];
+    }
     const m = T * 2;
-    p.tx = room.x * T + m + Math.random() * (room.w * T - m * 2);
-    p.ty = room.y * T + m + 20 + Math.random() * (room.h * T - m * 2 - 20);
-    p.wait = 100 + Math.random() * 300;
+    p.tx = targetRoom.x * T + m + Math.random() * (targetRoom.w * T - m * 2);
+    p.ty = targetRoom.y * T + m + 20 + Math.random() * (targetRoom.h * T - m * 2 - 20);
+    p.wait = 80 + Math.random() * 250;
+    p.currentRoom = targetRoom.id;
   }, []);
 
   // Render loop
@@ -810,7 +831,7 @@ export default function WorldPage() {
       ctx.fillStyle = "#080c14";
       ctx.fillRect(0, 0, CW, CH);
 
-      // Hallway floor (subtle checkerboard)
+      // Hallway floor
       for (let x = 0; x < MAP_W; x++) {
         for (let y = 0; y < MAP_H; y++) {
           ctx.fillStyle = (x + y) % 2 === 0 ? "#0c1018" : "#0e1220";
@@ -820,7 +841,6 @@ export default function WorldPage() {
 
       // Room floors + walls + furniture
       for (const room of ROOMS) {
-        // Floor tiles
         for (let tx = room.x; tx < room.x + room.w; tx++) {
           for (let ty = room.y; ty < room.y + room.h; ty++) {
             drawFloorTile(ctx, tx * T, ty * T, room.floor, room.floorTint, tx, ty);
@@ -830,21 +850,15 @@ export default function WorldPage() {
         drawFurniture(ctx, room, frame);
       }
 
-      // Update particles
+      // Particles
       const parts = particlesRef.current;
       for (const p of parts) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life--;
+        p.x += p.vx; p.y += p.vy; p.life--;
         if (p.life <= 0 || p.y < 0 || p.x < 0 || p.x > CW) {
-          p.x = Math.random() * CW;
-          p.y = CH + 10;
-          p.life = 300 + Math.random() * 300;
+          p.x = Math.random() * CW; p.y = CH + 10; p.life = 300 + Math.random() * 300;
         }
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${p.alpha * 0.5})`;
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${p.alpha * 0.5})`; ctx.fill();
       }
 
       // Update + draw agents (sorted by y for depth)
@@ -863,7 +877,7 @@ export default function WorldPage() {
             else { p.x += (dx / dist) * p.speed; p.y += (dy / dist) * p.speed; p.moving = true; }
           }
         }
-        const room = ROOMS.find(r => r.id === agent.room);
+        const room = ROOMS.find(r => r.id === p.currentRoom) || ROOMS.find(r => r.id === agent.room);
         const st = STATUS_CFG[agent.status] || STATUS_CFG.idle;
         const idx = agents.indexOf(agent);
         drawCharacter(ctx, p.x, p.y, room?.color || "#6b7280", st.color, frame,
@@ -871,7 +885,29 @@ export default function WorldPage() {
           agent.name.split(" ")[0], agent.emoji, agent.current_task, idx, p.moving);
       }
 
-      // Vignette overlay
+      // Inter-agent interaction bubbles
+      const agentArr = agents.filter(a => pos[a.id]);
+      for (let i = 0; i < agentArr.length; i++) {
+        for (let j = i + 1; j < agentArr.length; j++) {
+          const pa = pos[agentArr[i].id], pb = pos[agentArr[j].id];
+          if (!pa || !pb) continue;
+          const d = Math.sqrt((pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2);
+          if (d < 80 && !pa.moving && !pb.moving) {
+            // Draw chat indicator between them
+            const mx2 = (pa.x + pb.x) / 2, my2 = (pa.y + pb.y) / 2 - 30;
+            ctx.fillStyle = "rgba(59,130,246,0.3)";
+            ctx.beginPath();
+            ctx.ellipse(mx2, my2, 12 + Math.sin(frame * 0.08) * 3, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.7)";
+            ctx.font = "10px serif";
+            ctx.textAlign = "center";
+            ctx.fillText("💬", mx2, my2 + 4);
+          }
+        }
+      }
+
+      // Vignette
       const vg = ctx.createRadialGradient(CW / 2, CH / 2, CW * 0.3, CW / 2, CH / 2, CW * 0.7);
       vg.addColorStop(0, "transparent");
       vg.addColorStop(1, "rgba(0,0,0,0.3)");
@@ -882,7 +918,7 @@ export default function WorldPage() {
     return () => cancelAnimationFrame(animId);
   }, [agents, selectedAgent, hoveredAgent, pickTarget]);
 
-  // Click + hover handlers
+  // Click + hover
   const getAgentAt = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -901,6 +937,7 @@ export default function WorldPage() {
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const agent = getAgentAt(e);
     setSelectedAgent(agent);
+    if (agent) setPopupPos({ x: e.clientX, y: e.clientY });
   }, [getAgentAt]);
 
   const handleMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -909,164 +946,181 @@ export default function WorldPage() {
     if (canvasRef.current) canvasRef.current.style.cursor = agent ? "pointer" : "default";
   }, [getAgentAt]);
 
-  // Summary stats
+  // Stats
   const activeCount = agents.filter(a => a.status === "active" || a.status === "working").length;
   const crewXP = agents.reduce((s, a) => s + a.xp, 0);
   const inProgress = tasks.filter(t => t.status === "in_progress").length;
 
   return (
-    <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <span className="text-3xl animate-float">🏴‍☠️</span> Thousand Sunny — Virtual Office
-          </h1>
-          <p className="text-[11px] text-gray-500 font-mono mt-1">
-            GATHER_MODE ● {agents.length} AGENTS ● {activeCount} ACTIVE ● LIVE
-          </p>
+    <div ref={containerRef} className="relative w-full" style={{ height: "calc(100vh - 56px)" }}>
+      {/* ═══ HEADBAR ═══ */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2"
+        style={{ background: "rgba(8,12,20,0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div className="flex items-center gap-3">
+          <span className="text-xl">🏴‍☠️</span>
+          <div>
+            <h1 className="text-sm font-bold text-white">Thousand Sunny — Virtual Office</h1>
+            <p className="text-[9px] text-gray-600 font-mono">GATHER ● {agents.length} AGENTS ● {activeCount} ACTIVE ● LIVE</p>
+          </div>
         </div>
-        <div className="flex gap-2 text-xs">
+
+        {/* Agent avatar strip */}
+        <div className="flex items-center gap-1">
+          {agents.map(a => {
+            const st = STATUS_CFG[a.status] || STATUS_CFG.idle;
+            return (
+              <button key={a.id} onClick={() => { setSelectedAgent(a); setPopupPos({ x: 400, y: 100 }); }}
+                title={`${a.name} — ${st.label}`}
+                className={`relative w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all ${
+                  selectedAgent?.id === a.id ? "ring-1 ring-blue-500 bg-blue-500/10 scale-110" : "hover:bg-white/5"
+                }`}>
+                {a.emoji}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[#080c14]" style={{ background: st.color }} />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* KPIs */}
+        <div className="flex gap-3 text-[10px]">
           {[
-            { icon: "🎯", label: "Active", val: `${activeCount}/${agents.length}`, c: "text-accent-green" },
-            { icon: "⭐", label: "Crew XP", val: crewXP.toLocaleString(), c: "text-accent-purple" },
-            { icon: "⚡", label: "In Progress", val: inProgress.toString(), c: "text-accent-amber" },
+            { label: "Active", val: `${activeCount}/${agents.length}`, c: "#10b981" },
+            { label: "XP", val: crewXP.toLocaleString(), c: "#8b5cf6" },
+            { label: "Tasks", val: inProgress.toString(), c: "#f59e0b" },
           ].map(k => (
-            <div key={k.label} className="kpi-card px-3 py-1.5 flex items-center gap-2">
-              <span>{k.icon}</span>
-              <div>
-                <div className={`font-mono font-bold ${k.c}`}>{k.val}</div>
-                <div className="text-[8px] text-gray-600 uppercase">{k.label}</div>
-              </div>
+            <div key={k.label} className="text-center">
+              <div className="font-mono font-bold" style={{ color: k.c }}>{k.val}</div>
+              <div className="text-gray-600 uppercase text-[7px]">{k.label}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Canvas + Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 glass-card p-2 overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={CW} height={CH}
-            onClick={handleClick}
-            onMouseMove={handleMove}
-            className="w-full rounded-lg"
-            style={{ imageRendering: "auto", aspectRatio: `${MAP_W}/${MAP_H}` }}
-          />
-        </div>
+      {/* ═══ CANVAS (full viewport) ═══ */}
+      <canvas
+        ref={canvasRef}
+        width={CW} height={CH}
+        onClick={handleClick}
+        onMouseMove={handleMove}
+        className="w-full h-full"
+        style={{ imageRendering: "auto", objectFit: "contain", background: "#080c14" }}
+      />
 
-        {/* Agent Detail */}
-        <div className="glass-card p-4 space-y-4 overflow-y-auto max-h-[700px]">
-          <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Agent Inspector</h3>
-          <AnimatePresence mode="wait">
-            {selectedAgent ? (
-              <AgentPanel key={selectedAgent.id} agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
-            ) : (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-10 space-y-2">
-                <span className="text-4xl block">👆</span>
-                <p className="text-xs text-gray-500">Click an agent to inspect</p>
-                <p className="text-[10px] text-gray-700 font-mono">Hover to see their task</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Crew list */}
-          <div className="border-t border-glass-border pt-3 space-y-1">
-            <h4 className="text-[9px] uppercase tracking-widest text-gray-600 font-mono mb-2">Crew</h4>
-            {agents.map(a => {
-              const st = STATUS_CFG[a.status] || STATUS_CFG.idle;
-              return (
-                <button key={a.id} onClick={() => setSelectedAgent(a)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all text-xs ${
-                    selectedAgent?.id === a.id ? "bg-accent-blue/10 border border-accent-blue/30" : "hover:bg-ocean-900/50 border border-transparent"
-                  }`}>
-                  <span className="text-sm">{a.emoji}</span>
-                  <span className="text-gray-300 truncate flex-1">{a.name}</span>
-                  <span className="w-2 h-2 rounded-full" style={{ background: st.color }} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      {/* ═══ FLOATING AGENT POPUP ═══ */}
+      <AnimatePresence>
+        {selectedAgent && (
+          <motion.div
+            key={selectedAgent.id}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute z-30 w-72 max-h-[400px] overflow-y-auto"
+            style={{
+              left: Math.min(popupPos.x + 16, (containerRef.current?.clientWidth || 800) - 300),
+              top: Math.min(Math.max(popupPos.y - 80, 48), (containerRef.current?.clientHeight || 600) - 420),
+              background: "rgba(10,15,28,0.92)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "12px",
+              padding: "14px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}>
+            <FloatingAgentCard agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════
-   AGENT DETAIL PANEL
+   FLOATING AGENT CARD (replaces sidebar panel)
    ═══════════════════════════════════════════════════════════ */
 const RARITY_COLORS: Record<string, string> = { common: "#6b7280", rare: "#3b82f6", epic: "#8b5cf6", legendary: "#f59e0b" };
 
-function AgentPanel({ agent, onClose }: { agent: AgentRecord; onClose: () => void }) {
+function FloatingAgentCard({ agent, onClose }: { agent: AgentRecord; onClose: () => void }) {
   const lvl = getLevelFromXP(agent.xp);
   const st = STATUS_CFG[agent.status] || STATUS_CFG.idle;
 
   return (
-    <motion.div key={agent.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl" style={{ background: `${st.color}15`, boxShadow: `0 0 12px ${st.color}30` }}>
+    <div className="space-y-2.5 text-xs">
+      {/* Header */}
+      <div className="flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style={{ background: `${st.color}15`, boxShadow: `0 0 12px ${st.color}30` }}>
           {agent.emoji}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-bold text-white">{agent.name}</h3>
-          <p className="text-[10px] text-gray-500">{agent.department}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="w-2 h-2 rounded-full" style={{ background: st.color }} />
             <span className="text-[10px] font-mono capitalize" style={{ color: st.color }}>{st.label}</span>
-            <span className="text-[10px] font-mono text-accent-purple ml-1">Lv.{lvl.level}</span>
+            <span className="text-[10px] font-mono text-purple-400 ml-1">Lv.{lvl.level}</span>
           </div>
         </div>
+        <button onClick={onClose} className="text-gray-600 hover:text-white text-lg leading-none">×</button>
       </div>
-      {agent.soul && <p className="text-[10px] text-gray-400 italic border-l-2 border-glass-border pl-2">&ldquo;{agent.soul}&rdquo;</p>}
+
+      {/* Soul quote */}
+      {agent.soul && <p className="text-[10px] text-gray-400 italic border-l-2 border-gray-800 pl-2">&ldquo;{agent.soul}&rdquo;</p>}
+
+      {/* XP Bar */}
       <div>
-        <div className="flex justify-between text-[9px] text-gray-600 mb-0.5"><span>{agent.xp} XP</span><span>{lvl.nextXP} XP</span></div>
-        <div className="xp-bar h-1.5"><motion.div initial={{ width: 0 }} animate={{ width: `${lvl.progress}%` }} transition={{ duration: 0.8 }} className="xp-bar-fill h-full" /></div>
+        <div className="flex justify-between text-[8px] text-gray-600 mb-0.5"><span>{agent.xp} XP</span><span>{lvl.nextXP}</span></div>
+        <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+          <motion.div initial={{ width: 0 }} animate={{ width: `${lvl.progress}%` }}
+            transition={{ duration: 0.8 }} className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500" />
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-center">
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-4 gap-1.5 text-center">
         {[
-          { l: "Tasks", v: agent.tasks_completed, c: "text-accent-green" },
-          { l: "Streak", v: `${agent.streak_days}d`, c: "text-accent-amber" },
-          { l: "Tokens", v: agent.tokens_today.toLocaleString(), c: "text-accent-blue" },
-          { l: "Blocked", v: agent.tasks_blocked, c: "text-accent-red" },
+          { l: "Done", v: agent.tasks_completed, c: "text-green-400" },
+          { l: "Streak", v: `${agent.streak_days}d`, c: "text-amber-400" },
+          { l: "Tokens", v: (agent.tokens_today / 1000).toFixed(1) + "k", c: "text-blue-400" },
+          { l: "Block", v: agent.tasks_blocked, c: "text-red-400" },
         ].map(s => (
-          <div key={s.l} className="p-2 rounded-lg bg-ocean-900/50">
-            <div className={`text-sm font-bold font-mono ${s.c}`}>{s.v}</div>
-            <div className="text-[8px] text-gray-600 uppercase">{s.l}</div>
+          <div key={s.l} className="p-1.5 rounded bg-white/[0.03]">
+            <div className={`text-xs font-bold font-mono ${s.c}`}>{s.v}</div>
+            <div className="text-[7px] text-gray-600 uppercase">{s.l}</div>
           </div>
         ))}
       </div>
-      <div className="space-y-1.5">
+
+      {/* Stat bars */}
+      <div className="space-y-1">
         {Object.entries(agent.stats).map(([stat, val]) => (
-          <div key={stat} className="flex items-center gap-1.5 text-[10px]">
-            <span className="text-gray-500 w-16 capitalize">{stat}</span>
-            <div className="flex-1 h-1.5 rounded-full bg-ocean-800 overflow-hidden">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${val}%` }} transition={{ duration: 0.6 }}
-                className="h-full rounded-full" style={{ background: val >= 90 ? "#10b981" : val >= 75 ? "#3b82f6" : val >= 60 ? "#f59e0b" : "#ef4444" }} />
+          <div key={stat} className="flex items-center gap-1.5 text-[9px]">
+            <span className="text-gray-500 w-14 capitalize">{stat}</span>
+            <div className="flex-1 h-1 rounded-full bg-gray-800 overflow-hidden">
+              <div className="h-full rounded-full" style={{
+                width: `${val}%`,
+                background: val >= 90 ? "#10b981" : val >= 75 ? "#3b82f6" : val >= 60 ? "#f59e0b" : "#ef4444",
+              }} />
             </div>
-            <span className="text-gray-500 font-mono w-5 text-right">{val}</span>
+            <span className="text-gray-600 font-mono w-4 text-right">{val}</span>
           </div>
         ))}
       </div>
+
+      {/* Achievements */}
       {agent.achievements.length > 0 && (
-        <div className="border-t border-glass-border pt-2">
-          <h4 className="text-[9px] uppercase text-gray-600 font-mono mb-1.5">Achievements</h4>
-          <div className="flex flex-wrap gap-1.5">
-            {agent.achievements.map(a => (
-              <span key={a.id} title={`${a.name} — ${a.description}`}
-                className="w-7 h-7 flex items-center justify-center text-sm rounded border"
-                style={{ borderColor: `${RARITY_COLORS[a.rarity]}40`, background: `${RARITY_COLORS[a.rarity]}10` }}>{a.icon}</span>
-            ))}
-          </div>
+        <div className="flex flex-wrap gap-1">
+          {agent.achievements.map(a => (
+            <span key={a.id} title={`${a.name}`}
+              className="w-6 h-6 flex items-center justify-center text-xs rounded"
+              style={{ background: `${RARITY_COLORS[a.rarity]}15`, border: `1px solid ${RARITY_COLORS[a.rarity]}30` }}>{a.icon}</span>
+          ))}
         </div>
       )}
+
+      {/* Current task */}
       {agent.current_task && (
-        <div className="border-t border-glass-border pt-2">
-          <h4 className="text-[9px] uppercase text-gray-600 font-mono mb-1">Current Task</h4>
-          <p className="text-[11px] text-gray-300 font-mono">{agent.current_task}</p>
+        <div className="border-t border-gray-800 pt-2">
+          <p className="text-[9px] text-gray-500 uppercase mb-0.5">Current Task</p>
+          <p className="text-[10px] text-gray-300">{agent.current_task}</p>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
