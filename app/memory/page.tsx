@@ -80,172 +80,258 @@ export default function MemoryPage() {
   );
 }
 
-// ━━━ Knowledge Graph Tab ━━━
+// ━━━ Knowledge Graph Tab (3D via Three.js) ━━━
 function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[]; edges: MemoryEdge[] }; agents: any[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNode, setSelectedNode] = useState<Memory | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
-  // Simple force-directed positions (pre-computed for display)
+  // 3D positions via force layout in 3D space
   const nodePositions = useMemo(() => {
-    const positions: Record<string, { x: number; y: number }> = {};
-    const width = 800, height = 500;
-    const cx = width / 2, cy = height / 2;
+    const pos: Record<string, { x: number; y: number; z: number }> = {};
+    const n = memoryGraph.nodes.length;
+    // Distribute on sphere surface using golden spiral
+    const phi = (1 + Math.sqrt(5)) / 2;
     memoryGraph.nodes.forEach((node, i) => {
-      const angle = (i / memoryGraph.nodes.length) * 2 * Math.PI;
-      const radius = 120 + (node.relevance * 80) + (i % 3) * 30;
-      positions[node.id] = {
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
+      const theta = 2 * Math.PI * i / phi;
+      const y = 1 - (2 * i) / (n - 1 || 1);
+      const radiusAtY = Math.sqrt(1 - y * y);
+      const spread = 3 + node.relevance * 1.5;
+      pos[node.id] = {
+        x: Math.cos(theta) * radiusAtY * spread,
+        y: y * spread,
+        z: Math.sin(theta) * radiusAtY * spread,
       };
     });
-    // Simple repulsion
-    for (let iter = 0; iter < 50; iter++) {
+    // Force simulation in 3D
+    for (let iter = 0; iter < 80; iter++) {
+      // Repulsion
       for (const a of memoryGraph.nodes) {
         for (const b of memoryGraph.nodes) {
-          if (a.id === b.id) continue;
-          const pa = positions[a.id], pb = positions[b.id];
-          const dx = pb.x - pa.x, dy = pb.y - pa.y;
-          const dist = Math.max(Math.sqrt(dx*dx + dy*dy), 1);
-          if (dist < 80) {
-            const force = (80 - dist) * 0.3;
+          if (a.id >= b.id) continue;
+          const pa = pos[a.id], pb = pos[b.id];
+          const dx = pb.x - pa.x, dy = pb.y - pa.y, dz = pb.z - pa.z;
+          const dist = Math.max(Math.sqrt(dx*dx + dy*dy + dz*dz), 0.1);
+          if (dist < 2) {
+            const force = (2 - dist) * 0.15;
             pa.x -= (dx / dist) * force;
             pa.y -= (dy / dist) * force;
+            pa.z -= (dz / dist) * force;
             pb.x += (dx / dist) * force;
             pb.y += (dy / dist) * force;
+            pb.z += (dz / dist) * force;
           }
         }
       }
-      // Attract connected nodes
+      // Attraction along edges
       for (const edge of memoryGraph.edges) {
-        const pa = positions[edge.source], pb = positions[edge.target];
+        const pa = pos[edge.source], pb = pos[edge.target];
         if (!pa || !pb) continue;
-        const dx = pb.x - pa.x, dy = pb.y - pa.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist > 100) {
-          const force = (dist - 100) * 0.02;
+        const dx = pb.x - pa.x, dy = pb.y - pa.y, dz = pb.z - pa.z;
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (dist > 2.5) {
+          const force = (dist - 2.5) * 0.02 * edge.weight;
           pa.x += (dx / dist) * force;
           pa.y += (dy / dist) * force;
+          pa.z += (dz / dist) * force;
           pb.x -= (dx / dist) * force;
           pb.y -= (dy / dist) * force;
+          pb.z -= (dz / dist) * force;
         }
       }
       // Center gravity
       for (const node of memoryGraph.nodes) {
-        const p = positions[node.id];
-        p.x += (cx - p.x) * 0.01;
-        p.y += (cy - p.y) * 0.01;
+        const p = pos[node.id];
+        p.x *= 0.995; p.y *= 0.995; p.z *= 0.995;
       }
     }
-    return positions;
+    return pos;
   }, [memoryGraph]);
 
+  // Three.js scene setup
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = 800 * dpr;
-    canvas.height = 500 * dpr;
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, 800, 500);
+    // Dynamic import of Three.js to avoid SSR issues
+    let cleanup: (() => void) | null = null;
 
-    // Draw edges
-    for (const edge of memoryGraph.edges) {
-      const from = nodePositions[edge.source];
-      const to = nodePositions[edge.target];
-      if (!from || !to) continue;
+    (async () => {
+      const THREE = await import("three");
+      const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
 
-      const isHighlighted = selectedNode && (edge.source === selectedNode.id || edge.target === selectedNode.id);
-      ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.strokeStyle = isHighlighted ? "rgba(139, 92, 246, 0.6)" : "rgba(255,255,255,0.08)";
-      ctx.lineWidth = isHighlighted ? 2 : 1;
-      ctx.stroke();
-    }
+      const width = container.clientWidth;
+      const height = 520;
 
-    // Draw nodes
-    for (const node of memoryGraph.nodes) {
-      const pos = nodePositions[node.id];
-      if (!pos) continue;
+      // Scene
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060a14);
+      scene.fog = new THREE.FogExp2(0x060a14, 0.06);
 
-      const isSelected = selectedNode?.id === node.id;
-      const isHovered = hoveredNode === node.id;
-      const isConnected = selectedNode && memoryGraph.edges.some(
-        e => (e.source === selectedNode.id && e.target === node.id) || (e.target === selectedNode.id && e.source === node.id)
-      );
-      const color = CATEGORY_COLORS[node.category] || "#6b7280";
-      const baseRadius = 6 + (node.relevance * 8);
-      const radius = isSelected ? baseRadius + 4 : isHovered ? baseRadius + 2 : baseRadius;
+      // Camera
+      const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
+      camera.position.set(6, 4, 8);
 
-      // Glow
-      if (isSelected || isConnected) {
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, radius + 6, 0, Math.PI * 2);
-        ctx.fillStyle = `${color}30`;
-        ctx.fill();
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.innerHTML = "";
+      container.appendChild(renderer.domElement);
+      renderer.domElement.style.borderRadius = "12px";
+
+      // Controls
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.3;
+      controls.minDistance = 3;
+      controls.maxDistance = 20;
+
+      // Ambient light
+      scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+      const pointLight = new THREE.PointLight(0x3b82f6, 1.5, 25);
+      pointLight.position.set(5, 5, 5);
+      scene.add(pointLight);
+
+      // Grid helper (subtle)
+      const grid = new THREE.GridHelper(16, 16, 0x1f2937, 0x111827);
+      grid.position.y = -4;
+      (grid.material as THREE.Material).opacity = 0.3;
+      (grid.material as THREE.Material).transparent = true;
+      scene.add(grid);
+
+      // Category color map
+      const catColors: Record<string, number> = {
+        fact: 0x3b82f6,
+        preference: 0x10b981,
+        decision: 0xf59e0b,
+        pattern: 0x8b5cf6,
+      };
+
+      // Node meshes
+      const nodeMeshes: THREE.Mesh[] = [];
+      const nodeIdMap = new Map<THREE.Mesh, Memory>();
+
+      for (const node of memoryGraph.nodes) {
+        const p = nodePositions[node.id];
+        if (!p) continue;
+
+        const radius = 0.12 + node.relevance * 0.15;
+        const color = catColors[node.category] || 0x6b7280;
+
+        // Node sphere
+        const geo = new THREE.SphereGeometry(radius, 16, 16);
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.4,
+          roughness: 0.3,
+          metalness: 0.5,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(p.x, p.y, p.z);
+        scene.add(mesh);
+        nodeMeshes.push(mesh);
+        nodeIdMap.set(mesh, node);
+
+        // Glow aura
+        const glowGeo = new THREE.SphereGeometry(radius * 2, 16, 16);
+        const glowMat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.08,
+        });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.position.copy(mesh.position);
+        scene.add(glow);
       }
 
-      // Node
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = isSelected ? color : isConnected ? `${color}cc` : node.id === hoveredNode ? `${color}dd` : `${color}88`;
-      ctx.fill();
+      // Edges
+      for (const edge of memoryGraph.edges) {
+        const from = nodePositions[edge.source];
+        const to = nodePositions[edge.target];
+        if (!from || !to) continue;
 
-      // Label
-      if (isSelected || isHovered) {
-        ctx.font = "10px monospace";
-        ctx.fillStyle = "#d1d5db";
-        ctx.textAlign = "center";
-        const label = node.content.length > 30 ? node.content.slice(0, 28) + "…" : node.content;
-        ctx.fillText(label, pos.x, pos.y - radius - 8);
+        const points = [
+          new THREE.Vector3(from.x, from.y, from.z),
+          new THREE.Vector3(to.x, to.y, to.z),
+        ];
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const lineMat = new THREE.LineBasicMaterial({
+          color: 0x6b7280,
+          transparent: true,
+          opacity: 0.15 + edge.weight * 0.15,
+        });
+        scene.add(new THREE.Line(lineGeo, lineMat));
       }
-    }
-  }, [memoryGraph, nodePositions, selectedNode, hoveredNode]);
 
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+      // Particle stars background
+      const starGeo = new THREE.BufferGeometry();
+      const starVerts = new Float32Array(600).map(() => (Math.random() - 0.5) * 30);
+      starGeo.setAttribute("position", new THREE.BufferAttribute(starVerts, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.4 });
+      scene.add(new THREE.Points(starGeo, starMat));
 
-    for (const node of memoryGraph.nodes) {
-      const pos = nodePositions[node.id];
-      if (!pos) continue;
-      const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-      if (dist < 14) {
-        setSelectedNode(node);
-        return;
-      }
-    }
-    setSelectedNode(null);
+      // Raycaster for selection
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      const onClick = (e: MouseEvent) => {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(nodeMeshes);
+        if (hits.length > 0) {
+          const node = nodeIdMap.get(hits[0].object as THREE.Mesh);
+          if (node) setSelectedNode(node);
+        } else {
+          setSelectedNode(null);
+        }
+      };
+      renderer.domElement.addEventListener("click", onClick);
+
+      // Animation loop
+      let frameId: number;
+      const animate = () => {
+        frameId = requestAnimationFrame(animate);
+        controls.update();
+
+        // Subtle node pulse animation
+        const time = Date.now() * 0.001;
+        nodeMeshes.forEach((mesh) => {
+          const scale = 1 + Math.sin(time * 2 + mesh.position.x) * 0.05;
+          mesh.scale.set(scale, scale, scale);
+        });
+
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      // Resize
+      const onResize = () => {
+        const w = container.clientWidth;
+        camera.aspect = w / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, height);
+      };
+      window.addEventListener("resize", onResize);
+
+      cleanup = () => {
+        cancelAnimationFrame(frameId);
+        renderer.domElement.removeEventListener("click", onClick);
+        window.removeEventListener("resize", onResize);
+        renderer.dispose();
+        controls.dispose();
+        container.innerHTML = "";
+      };
+    })();
+
+    return () => { if (cleanup) cleanup(); };
   }, [memoryGraph, nodePositions]);
 
-  const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    for (const node of memoryGraph.nodes) {
-      const pos = nodePositions[node.id];
-      if (!pos) continue;
-      const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-      if (dist < 14) {
-        setHoveredNode(node.id);
-        canvas.style.cursor = "pointer";
-        return;
-      }
-    }
-    setHoveredNode(null);
-    canvas.style.cursor = "default";
-  }, [memoryGraph, nodePositions]);
-
+  // Agent lookup for detail panel
   const agentLookup = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
     agents.forEach(a => { m[a.id] = { name: a.name, emoji: a.emoji }; });
@@ -262,20 +348,13 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
             <span className="capitalize">{cat}</span>
           </div>
         ))}
+        <div className="ml-auto text-[9px] text-gray-600 font-mono">drag to rotate • scroll to zoom • click node to inspect</div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Graph Canvas */}
+        {/* 3D Graph Container */}
         <div className="lg:col-span-2 glass-card p-4 overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={800}
-            height={500}
-            onClick={handleCanvasClick}
-            onMouseMove={handleCanvasMove}
-            className="w-full h-[500px] rounded-lg"
-            style={{ background: "rgba(6, 10, 20, 0.8)" }}
-          />
+          <div ref={containerRef} className="w-full h-[520px] rounded-lg" />
         </div>
 
         {/* Selected Node Detail */}
@@ -339,7 +418,7 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-gray-600 text-xs py-8">
                 <span className="text-3xl block mb-2">🧠</span>
-                Click on a node to view memory details
+                Click on a 3D node to view memory details
               </motion.div>
             )}
           </AnimatePresence>
