@@ -109,134 +109,231 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, floo
   }
 }
 
+/* ────────────────────────────────── */
+/* WARM OFFICE FLOOR — Gather-style  */
+/* ────────────────────────────────── */
+function drawRoomFloor(ctx: CanvasRenderingContext2D, room: RoomDef) {
+  const rx = room.x * T, ry = room.y * T;
+  const rw = room.w * T, rh = room.h * T;
+  // Warm base floor
+  const floorColors: Record<string, string> = {
+    wood: "#d4c4a8", tile: "#c8d0d8", carpet: "#b8c0b0", stone: "#bbb8b0",
+  };
+  ctx.fillStyle = floorColors[room.floor] || "#d0c8b8";
+  ctx.fillRect(rx, ry, rw, rh);
+  // Subtle tile grid
+  ctx.strokeStyle = "rgba(0,0,0,0.06)";
+  ctx.lineWidth = 0.5;
+  for (let gx = rx; gx <= rx + rw; gx += T) {
+    ctx.beginPath(); ctx.moveTo(gx, ry); ctx.lineTo(gx, ry + rh); ctx.stroke();
+  }
+  for (let gy = ry; gy <= ry + rh; gy += T) {
+    ctx.beginPath(); ctx.moveTo(rx, gy); ctx.lineTo(rx + rw, gy); ctx.stroke();
+  }
+}
+
 function drawRoomWalls(ctx: CanvasRenderingContext2D, room: RoomDef) {
   const rx = room.x * T, ry = room.y * T;
   const rw = room.w * T, rh = room.h * T;
-  // Glassmorphism border
-  ctx.save();
-  ctx.strokeStyle = `${room.color}35`;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = `${room.color}20`;
-  ctx.shadowBlur = 12;
+  // Outer wall
+  ctx.strokeStyle = "#8a8478";
+  ctx.lineWidth = 3;
   ctx.strokeRect(rx, ry, rw, rh);
-  ctx.restore();
-  // Inner glow line
-  ctx.strokeStyle = `${room.color}15`;
+  // Inner edge highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(rx + 2, ry + 2, rw - 4, rh - 4);
+  ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
 }
 
 function drawRoomLabel(ctx: CanvasRenderingContext2D, room: RoomDef, agentCount: number) {
   const rx = room.x * T, ry = room.y * T, rw = room.w * T;
-  // Background bar
-  ctx.fillStyle = "rgba(0,0,0,0.6)";
-  ctx.fillRect(rx, ry, rw, 22);
-  ctx.fillStyle = `${room.color}18`;
-  ctx.fillRect(rx, ry, rw, 22);
-  // Bottom edge
-  ctx.fillStyle = `${room.color}40`;
-  ctx.fillRect(rx, ry + 21, rw, 1);
-  // Icon + label
-  ctx.font = "11px serif";
-  ctx.textAlign = "left";
-  ctx.fillText(room.icon, rx + 6, ry + 15);
-  ctx.font = "bold 10px 'Segoe UI', sans-serif";
-  ctx.fillStyle = room.color;
-  ctx.fillText(room.label, rx + 24, ry + 15);
-  // Agent count badge
+  ctx.font = "bold 11px 'Segoe UI', sans-serif";
+  const label = room.label;
+  const tw = ctx.measureText(label).width + 24;
+  const lx = rx + rw / 2 - tw / 2;
+  // Pill background
+  ctx.fillStyle = "rgba(255,255,255,0.88)";
+  ctx.beginPath();
+  ctx.roundRect(lx, ry + 6, tw, 18, 9);
+  ctx.fill();
+  ctx.fillStyle = "#4a4540";
+  ctx.textAlign = "center";
+  ctx.fillText(label, rx + rw / 2, ry + 19);
+  // Agent count badge on right
   if (agentCount > 0) {
-    const badge = `${agentCount}`;
-    ctx.font = "bold 8px 'Segoe UI', sans-serif";
-    const bw = ctx.measureText(badge).width + 8;
-    ctx.fillStyle = `${room.color}30`;
+    ctx.fillStyle = "#5b8c5a";
     ctx.beginPath();
-    ctx.roundRect(rx + rw - bw - 6, ry + 5, bw, 13, 4);
+    ctx.arc(lx + tw + 6, ry + 15, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = room.color;
-    ctx.textAlign = "center";
-    ctx.fillText(badge, rx + rw - bw / 2 - 6, ry + 14);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 8px 'Segoe UI', sans-serif";
+    ctx.fillText(`${agentCount}`, lx + tw + 6, ry + 18);
   }
+}
+
+/* ────────────────────────────────── */
+/* FURNITURE — detailed pixel objects */
+/* ────────────────────────────────── */
+function drawDesk(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  // Desk surface
+  ctx.fillStyle = "#8B7355"; ctx.fillRect(x, y + 12, 40, 16);
+  ctx.fillStyle = "#a08563"; ctx.fillRect(x + 1, y + 13, 38, 2); // highlight
+  // Monitor
+  ctx.fillStyle = "#2c2c2c"; ctx.fillRect(x + 10, y, 20, 14);
+  ctx.fillStyle = `${color}30`; ctx.fillRect(x + 12, y + 1, 16, 11); // screen glow
+  ctx.fillStyle = "#444"; ctx.fillRect(x + 17, y + 14, 6, 3); // stand
+  // Keyboard
+  ctx.fillStyle = "#555"; ctx.fillRect(x + 8, y + 20, 14, 4);
+  ctx.fillStyle = "#666"; ctx.fillRect(x + 9, y + 21, 12, 2); // keys
+}
+
+function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Seat
+  ctx.fillStyle = "#4a4a5a"; ctx.fillRect(x, y, 14, 10);
+  ctx.fillStyle = "#5a5a6a"; ctx.fillRect(x + 1, y + 1, 12, 3); // cushion
+  // Back
+  ctx.fillStyle = "#3a3a4a"; ctx.fillRect(x + 1, y - 6, 12, 7);
+  // Wheels (just dots)
+  ctx.fillStyle = "#333";
+  ctx.fillRect(x + 1, y + 10, 3, 2);
+  ctx.fillRect(x + 10, y + 10, 3, 2);
+}
+
+function drawPlant(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
+  // Pot
+  ctx.fillStyle = "#b87333"; ctx.fillRect(x + 2, y + 8, 10, 10);
+  ctx.fillStyle = "#d48a45"; ctx.fillRect(x + 1, y + 7, 12, 3);
+  // Dirt
+  ctx.fillStyle = "#5a3e2b"; ctx.fillRect(x + 3, y + 7, 8, 2);
+  // Leaves
+  const sway = Math.sin(frame * 0.03) * 1.5;
+  ctx.fillStyle = "#4a8c3f";
+  ctx.beginPath(); ctx.arc(x + 7 + sway, y + 2, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#5ba84e";
+  ctx.beginPath(); ctx.arc(x + 4 + sway * 0.5, y + 4, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 10 + sway * 0.7, y + 5, 4, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawCouch(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  // Base
+  ctx.fillStyle = color; ctx.fillRect(x, y + 4, 50, 16);
+  // Cushions
+  ctx.fillStyle = "rgba(255,255,255,0.1)";
+  ctx.fillRect(x + 3, y + 6, 20, 8);
+  ctx.fillRect(x + 27, y + 6, 20, 8);
+  // Arms
+  ctx.fillStyle = color; ctx.fillRect(x - 3, y + 2, 5, 18);
+  ctx.fillRect(x + 48, y + 2, 5, 18);
+  // Backrest
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, 50, 6);
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.fillRect(x + 1, y + 1, 48, 2);
+}
+
+function drawBookshelf(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Frame
+  ctx.fillStyle = "#8B7355"; ctx.fillRect(x, y, 30, 24);
+  ctx.fillStyle = "#7a6345"; ctx.fillRect(x + 1, y + 1, 28, 1); // top
+  // Shelves
+  ctx.fillStyle = "#725d3d"; ctx.fillRect(x + 1, y + 8, 28, 1);
+  ctx.fillRect(x + 1, y + 16, 28, 1);
+  // Books
+  const bookColors = ["#c0392b", "#2980b9", "#27ae60", "#8e44ad", "#f39c12", "#e74c3c", "#3498db"];
+  for (let s = 0; s < 3; s++) {
+    const sy = y + 1 + s * 8;
+    for (let b = 0; b < 5; b++) {
+      ctx.fillStyle = bookColors[(s * 5 + b) % bookColors.length];
+      ctx.fillRect(x + 3 + b * 5, sy + 1, 4, 6);
+    }
+  }
+}
+
+function drawTable(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Table top (circle)
+  ctx.fillStyle = "#8B7355";
+  ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#a08563";
+  ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawWhiteboard(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = "#ddd"; ctx.fillRect(x, y, 40, 24);
+  ctx.strokeStyle = "#999"; ctx.lineWidth = 1; ctx.strokeRect(x, y, 40, 24);
+  // Scribbles
+  ctx.strokeStyle = "#4a90d9"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x + 5, y + 6); ctx.lineTo(x + 20, y + 8); ctx.lineTo(x + 35, y + 5); ctx.stroke();
+  ctx.strokeStyle = "#e74c3c";
+  ctx.beginPath(); ctx.moveTo(x + 5, y + 14); ctx.lineTo(x + 25, y + 12); ctx.stroke();
+  ctx.strokeStyle = "#27ae60";
+  ctx.beginPath(); ctx.moveTo(x + 5, y + 20); ctx.lineTo(x + 30, y + 18); ctx.stroke();
 }
 
 function drawFurniture(ctx: CanvasRenderingContext2D, room: RoomDef, frame: number) {
-  const rx = room.x * T + 4, ry = room.y * T + 26;
-  const rw = room.w * T - 8, rh = room.h * T - 30;
-  ctx.globalAlpha = 0.7;
+  const rx = room.x * T + 8, ry = room.y * T + 28;
+  const rw = room.w * T - 16, rh = room.h * T - 36;
+
   if (room.type === "common") {
     if (room.id === "lobby") {
-      // Sofas
-      ctx.fillStyle = "#1e3a5f"; ctx.fillRect(rx + 20, ry + 20, 60, 20);
-      ctx.fillStyle = "#2563eb20"; ctx.fillRect(rx + rw - 80, ry + rh - 40, 60, 20);
-      // Reception desk
-      ctx.fillStyle = "#374151"; ctx.fillRect(rx + rw / 2 - 30, ry + rh / 2, 60, 16);
-      ctx.fillStyle = "#94a3b820"; ctx.fillRect(rx + rw / 2 - 28, ry + rh / 2 + 2, 56, 12);
+      drawCouch(ctx, rx + 10, ry + 10, "#6a7b8a");
+      drawCouch(ctx, rx + rw - 60, ry + rh - 30, "#7a6b5a");
+      drawPlant(ctx, rx + rw - 20, ry + 8, frame);
+      drawPlant(ctx, rx + 5, ry + rh - 20, frame);
+      drawTable(ctx, rx + rw / 2, ry + rh / 2);
     } else if (room.id === "cafe") {
       // Counter
-      ctx.fillStyle = "#4a3728"; ctx.fillRect(rx + 10, ry + 10, rw - 20, 14);
+      ctx.fillStyle = "#8B7355"; ctx.fillRect(rx + 6, ry + 4, rw - 12, 12);
+      ctx.fillStyle = "#a08563"; ctx.fillRect(rx + 8, ry + 5, rw - 16, 3);
+      // Coffee cups
+      ctx.fillStyle = "#ddd"; ctx.fillRect(rx + 14, ry + 2, 5, 4);
+      ctx.fillStyle = "#ddd"; ctx.fillRect(rx + 24, ry + 2, 5, 4);
+      // Steam
+      ctx.fillStyle = `rgba(200,200,200,${0.3 + Math.sin(frame * 0.06) * 0.15})`;
+      ctx.fillRect(rx + 15, ry - 2 - Math.abs(Math.sin(frame * 0.08)) * 4, 2, 4);
+      ctx.fillRect(rx + 25, ry - 1 - Math.abs(Math.sin(frame * 0.07)) * 3, 2, 4);
       // Tables
-      for (let i = 0; i < 3; i++) {
-        ctx.fillStyle = "#374151";
-        ctx.beginPath();
-        ctx.arc(rx + 40 + i * 50, ry + rh / 2 + 10, 10, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      // Steam animation
-      ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.sin(frame * 0.05) * 0.05})`;
-      ctx.fillRect(rx + 20, ry + 4 - Math.sin(frame * 0.08) * 3, 4, 6);
+      drawTable(ctx, rx + 30, ry + rh / 2 + 5);
+      drawTable(ctx, rx + rw - 30, ry + rh / 2 + 5);
+      drawPlant(ctx, rx + rw - 16, ry + 6, frame);
     } else if (room.id === "sala-reuniao") {
-      ctx.fillStyle = "#1e293b"; ctx.fillRect(rx + rw / 2 - 40, ry + rh / 2 - 12, 80, 24);
-      ctx.fillStyle = `${room.color}15`; ctx.fillRect(rx + rw / 2 - 38, ry + rh / 2 - 10, 76, 20);
-      // Chairs around
-      for (let i = 0; i < 6; i++) {
-        const cx2 = rx + rw / 2 - 35 + i * 14;
-        ctx.fillStyle = "#4b5563"; ctx.fillRect(cx2, ry + rh / 2 - 20, 8, 6);
-        ctx.fillRect(cx2, ry + rh / 2 + 14, 8, 6);
-      }
+      // Conference table
+      ctx.fillStyle = "#7a6345"; ctx.fillRect(rx + rw / 2 - 40, ry + rh / 2 - 10, 80, 20);
+      ctx.fillStyle = "#8B7355"; ctx.fillRect(rx + rw / 2 - 38, ry + rh / 2 - 8, 76, 16);
+      // Chairs around table
+      for (let i = 0; i < 5; i++) { drawChair(ctx, rx + rw / 2 - 35 + i * 16, ry + rh / 2 - 22); }
+      for (let i = 0; i < 5; i++) { drawChair(ctx, rx + rw / 2 - 35 + i * 16, ry + rh / 2 + 14); }
+      drawWhiteboard(ctx, rx + rw / 2 - 20, ry + 4);
     } else if (room.id === "jardim") {
-      // Pond with ripples
-      ctx.fillStyle = "#0d4f6f";
-      ctx.beginPath();
-      ctx.ellipse(rx + rw / 2, ry + rh / 2, 30 + Math.sin(frame * 0.03) * 2, 15, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(100,200,255,0.15)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(rx + rw / 2, ry + rh / 2, 20 + Math.sin(frame * 0.05) * 4, 10, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      // Bamboo
-      ctx.fillStyle = "#2d5a27";
-      ctx.fillRect(rx + 14, ry + 6, 4, rh - 10);
-      ctx.fillRect(rx + rw - 18, ry + 6, 4, rh - 10);
+      // Green patches
+      ctx.fillStyle = "#7aba6e"; ctx.beginPath(); ctx.arc(rx + 20, ry + rh / 2, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#6aaa5e"; ctx.beginPath(); ctx.arc(rx + rw - 20, ry + rh / 2, 10, 0, Math.PI * 2); ctx.fill();
+      // Water feature
+      ctx.fillStyle = "#6ab8d4";
+      ctx.beginPath(); ctx.ellipse(rx + rw / 2, ry + rh / 2, 20 + Math.sin(frame * 0.03) * 2, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.ellipse(rx + rw / 2, ry + rh / 2, 14 + Math.sin(frame * 0.05) * 3, 7, 0, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 3; i++) drawPlant(ctx, rx + 10 + i * 40, ry + 4, frame + i * 30);
     } else if (room.id === "auditorio") {
-      // Rows of seats
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 6; c++) {
-          ctx.fillStyle = "#374151"; ctx.fillRect(rx + 20 + c * 18, ry + 20 + r * 20, 12, 10);
-        }
-      }
-      // Podium
-      ctx.fillStyle = "#4a3728"; ctx.fillRect(rx + rw / 2 - 12, ry + rh - 20, 24, 14);
+      // Rows of chairs
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) drawChair(ctx, rx + 12 + c * 18, ry + 14 + r * 22);
+      // Stage/podium
+      ctx.fillStyle = "#8B7355"; ctx.fillRect(rx + rw / 2 - 16, ry + rh - 18, 32, 12);
+      ctx.fillStyle = "#a08563"; ctx.fillRect(rx + rw / 2 - 14, ry + rh - 16, 28, 3);
     }
   } else {
-    // Office furniture
-    ctx.fillStyle = "#1e293b"; ctx.fillRect(rx + 14, ry + 30, 50, 20); // desk
-    ctx.fillStyle = `${room.color}15`; ctx.fillRect(rx + 16, ry + 32, 46, 16); // screen glow
-    ctx.fillStyle = "#374151"; ctx.fillRect(rx + 26, ry + 52, 10, 8); // chair
-    ctx.fillStyle = "#1e293b"; ctx.fillRect(rx + rw - 64, ry + 30, 50, 20); // desk 2
-    ctx.fillStyle = `${room.color}15`; ctx.fillRect(rx + rw - 62, ry + 32, 46, 16);
-    ctx.fillStyle = "#374151"; ctx.fillRect(rx + rw - 52, ry + 52, 10, 8);
-    // Plant
-    ctx.fillStyle = "#2d5a27";
-    ctx.beginPath();
-    ctx.arc(rx + rw - 16, ry + rh - 16, 8 + Math.sin(frame * 0.04) * 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#4a3728"; ctx.fillRect(rx + rw - 19, ry + rh - 10, 6, 10);
+    // Office rooms — 2 desk + chair stations, bookshelf, plant
+    drawDesk(ctx, rx + 8, ry + 20, room.color);
+    drawChair(ctx, rx + 20, ry + 42);
+    drawDesk(ctx, rx + rw - 50, ry + 20, room.color);
+    drawChair(ctx, rx + rw - 38, ry + 42);
+    drawBookshelf(ctx, rx + rw - 34, ry + rh - 28);
+    drawPlant(ctx, rx + 2, ry + rh - 20, frame);
+    drawPlant(ctx, rx + rw - 14, ry + 4, frame);
   }
-  ctx.globalAlpha = 1;
 }
 
 // ══════════════════════════════════════════════════════════
-// CHARACTER DRAWING — Premium identifiable sprites
+// CHARACTER DRAWING — Gather-style chibi pixel art
 // ══════════════════════════════════════════════════════════
 
 function drawCharacter(
@@ -246,204 +343,249 @@ function drawCharacter(
   name: string, emoji: string, statusLabel: string,
   isMoving: boolean, interactionIcon: string | null,
 ) {
-  const bounce = isMoving ? Math.sin(frame * 0.2) * 3 : Math.sin(frame * 0.06) * 0.5;
+  const bounce = isMoving ? Math.sin(frame * 0.25) * 2.5 : Math.sin(frame * 0.05) * 0.5;
   const by = py + bounce;
+  const walkPhase = Math.sin(frame * 0.3);
 
-  // Shadow
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  // ── Shadow ──
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.beginPath();
-  ctx.ellipse(px, py + 22, 12, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, py + 24, 14, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Selection ring
+  // ── Selection ring ──
   if (isSelected || isHovered) {
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(px, py + 22, 16, 6, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = isSelected ? "#3b82f6" : "rgba(255,255,255,0.3)";
+    ctx.ellipse(px, py + 24, 18, 6, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = isSelected ? "#3b82f6" : "rgba(100,100,200,0.5)";
     ctx.lineWidth = isSelected ? 2.5 : 1.5;
-    if (isSelected) { ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 8; }
+    if (isSelected) { ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 10; }
     ctx.stroke();
     ctx.restore();
   }
 
-  // Feet
-  ctx.fillStyle = "#1a1a2e";
-  ctx.fillRect(px - 7, by + 16, 6, 5);
-  ctx.fillRect(px + 1, by + 16, 6, 5);
-  // Legs
-  ctx.fillStyle = vis.pants;
-  ctx.fillRect(px - 6, by + 8, 5, 9);
-  ctx.fillRect(px + 1, by + 8, 5, 9);
-  // Body
-  ctx.fillStyle = vis.shirt;
-  ctx.fillRect(px - 9, by - 6, 18, 16);
-  // Shirt detail (collar)
-  ctx.fillStyle = "rgba(255,255,255,0.1)";
-  ctx.fillRect(px - 2, by - 6, 4, 3);
-  // Arms
-  ctx.fillStyle = vis.shirt;
-  ctx.fillRect(px - 13, by - 4, 5, 14);
-  ctx.fillRect(px + 8, by - 4, 5, 14);
-  // Hands
-  ctx.fillStyle = vis.skin;
-  ctx.fillRect(px - 13, by + 8, 5, 5);
-  ctx.fillRect(px + 8, by + 8, 5, 5);
-  // Head
-  ctx.fillStyle = vis.skin;
-  ctx.fillRect(px - 8, by - 22, 16, 18);
-  // Eyes
-  ctx.fillStyle = "#1a1a2e";
-  const blink = Math.sin(frame * 0.08 + px * 0.01) > 0.92;
-  if (!blink) {
-    ctx.fillRect(px - 5, by - 16, 4, 4);
-    ctx.fillRect(px + 1, by - 16, 4, 4);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(px - 4, by - 15, 2, 2);
-    ctx.fillRect(px + 2, by - 15, 2, 2);
+  // ── Feet / Shoes ──
+  ctx.fillStyle = "#2c2c3a";
+  if (isMoving) {
+    ctx.fillRect(px - 7 + walkPhase * 2, by + 18, 6, 4);
+    ctx.fillRect(px + 1 - walkPhase * 2, by + 18, 6, 4);
   } else {
-    ctx.fillRect(px - 5, by - 14, 4, 1);
-    ctx.fillRect(px + 1, by - 14, 4, 1);
+    ctx.fillRect(px - 7, by + 18, 6, 4);
+    ctx.fillRect(px + 1, by + 18, 6, 4);
   }
-  // Mouth
-  ctx.fillStyle = "#c0392b";
-  ctx.fillRect(px - 3, by - 9, 6, 2);
 
-  // Hair by style
+  // ── Legs ──
+  ctx.fillStyle = vis.pants;
+  if (isMoving) {
+    ctx.fillRect(px - 6 + walkPhase * 1.5, by + 10, 5, 9);
+    ctx.fillRect(px + 1 - walkPhase * 1.5, by + 10, 5, 9);
+  } else {
+    ctx.fillRect(px - 6, by + 10, 5, 9);
+    ctx.fillRect(px + 1, by + 10, 5, 9);
+  }
+
+  // ── Body / Torso ──
+  ctx.fillStyle = vis.shirt;
+  ctx.fillRect(px - 10, by - 4, 20, 16);
+  // Shirt highlights
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.fillRect(px - 8, by - 3, 6, 2);
+  // Collar/neckline
+  ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.fillRect(px - 3, by - 4, 6, 3);
+
+  // ── Arms ──
+  ctx.fillStyle = vis.shirt;
+  const armSwing = isMoving ? walkPhase * 3 : 0;
+  ctx.fillRect(px - 14, by - 2 + armSwing, 5, 14);
+  ctx.fillRect(px + 9, by - 2 - armSwing, 5, 14);
+  // Hands (skin)
+  ctx.fillStyle = vis.skin;
+  ctx.fillRect(px - 14, by + 10 + armSwing, 5, 4);
+  ctx.fillRect(px + 9, by + 10 - armSwing, 5, 4);
+
+  // ── Head (large, chibi-proportioned) ──
+  ctx.fillStyle = vis.skin;
+  ctx.beginPath();
+  ctx.roundRect(px - 10, by - 24, 20, 22, 4);
+  ctx.fill();
+
+  // ── Eyes ──
+  const blink = Math.sin(frame * 0.07 + px * 0.02) > 0.93;
+  if (!blink) {
+    // Large anime-style eyes
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(px - 6, by - 18, 5, 6);
+    ctx.fillRect(px + 1, by - 18, 5, 6);
+    // White/shiny highlight
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(px - 5, by - 17, 2, 2);
+    ctx.fillRect(px + 2, by - 17, 2, 2);
+    // Iris color dots
+    ctx.fillStyle = vis.hair;
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(px - 4, by - 15, 2, 2);
+    ctx.fillRect(px + 3, by - 15, 2, 2);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(px - 6, by - 15, 5, 1);
+    ctx.fillRect(px + 1, by - 15, 5, 1);
+  }
+
+  // ── Mouth ──
+  ctx.fillStyle = "#c0665a";
+  ctx.fillRect(px - 2, by - 8, 4, 2);
+
+  // ── Hair (various styles, Gather-like) ──
   ctx.fillStyle = vis.hair;
   switch (vis.hairStyle) {
     case "short":
-      ctx.fillRect(px - 9, by - 24, 18, 6);
-      ctx.fillRect(px - 9, by - 22, 3, 8);
-      ctx.fillRect(px + 6, by - 22, 3, 6);
+      ctx.fillRect(px - 11, by - 27, 22, 7);
+      ctx.fillRect(px - 11, by - 24, 3, 8);
+      ctx.fillRect(px + 8, by - 24, 3, 6);
       break;
     case "spiky":
-      ctx.fillRect(px - 9, by - 26, 18, 6);
-      ctx.fillRect(px - 7, by - 30, 4, 6);
-      ctx.fillRect(px - 1, by - 32, 4, 8);
-      ctx.fillRect(px + 5, by - 29, 4, 5);
+      ctx.fillRect(px - 11, by - 28, 22, 7);
+      ctx.fillRect(px - 8, by - 34, 5, 8);
+      ctx.fillRect(px - 1, by - 36, 5, 10);
+      ctx.fillRect(px + 5, by - 33, 5, 7);
       break;
     case "long":
-      ctx.fillRect(px - 10, by - 24, 20, 6);
-      ctx.fillRect(px - 10, by - 22, 4, 18);
-      ctx.fillRect(px + 6, by - 22, 4, 18);
+      ctx.fillRect(px - 12, by - 27, 24, 7);
+      ctx.fillRect(px - 12, by - 24, 4, 22);
+      ctx.fillRect(px + 8, by - 24, 4, 22);
+      // Bangs
+      ctx.fillRect(px - 8, by - 22, 4, 4);
+      ctx.fillRect(px + 4, by - 22, 4, 4);
       break;
     case "bald":
-      ctx.fillRect(px - 8, by - 23, 16, 3);
+      ctx.fillStyle = vis.skin;
+      ctx.fillRect(px - 10, by - 26, 20, 3);
+      // Shine
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.fillRect(px - 4, by - 26, 6, 2);
       break;
     case "ponytail":
-      ctx.fillRect(px - 9, by - 24, 18, 6);
-      ctx.fillRect(px + 6, by - 22, 4, 6);
-      ctx.fillRect(px + 9, by - 18, 6, 4);
-      ctx.fillRect(px + 13, by - 16, 4, 12);
+      ctx.fillRect(px - 11, by - 27, 22, 7);
+      ctx.fillRect(px + 8, by - 24, 4, 8);
+      ctx.fillRect(px + 11, by - 18, 5, 3);
+      ctx.fillRect(px + 14, by - 16, 4, 14);
+      // Ribbon
+      ctx.fillStyle = "#e74c3c";
+      ctx.fillRect(px + 12, by - 17, 6, 3);
       break;
     case "afro":
       ctx.beginPath();
-      ctx.arc(px, by - 22, 14, 0, Math.PI * 2);
+      ctx.arc(px, by - 22, 16, 0, Math.PI * 2);
       ctx.fill();
       break;
     case "mohawk":
-      ctx.fillRect(px - 9, by - 24, 18, 5);
-      ctx.fillRect(px - 3, by - 32, 6, 10);
+      ctx.fillRect(px - 11, by - 27, 22, 6);
+      ctx.fillRect(px - 3, by - 38, 6, 14);
+      ctx.fillRect(px - 1, by - 40, 2, 4);
       break;
     case "bowl":
-      ctx.fillRect(px - 10, by - 24, 20, 8);
-      ctx.fillRect(px - 10, by - 18, 3, 6);
-      ctx.fillRect(px + 7, by - 18, 3, 6);
+      ctx.fillRect(px - 12, by - 27, 24, 9);
+      ctx.fillRect(px - 12, by - 20, 4, 6);
+      ctx.fillRect(px + 8, by - 20, 4, 6);
       break;
   }
 
-  // Accessories
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  // ── Accessories ──
   switch (vis.accessory) {
     case "glasses":
-      ctx.strokeStyle = "rgba(200,200,255,0.6)"; ctx.lineWidth = 1.5;
-      ctx.strokeRect(px - 6, by - 17, 5, 5);
-      ctx.strokeRect(px + 1, by - 17, 5, 5);
-      ctx.beginPath(); ctx.moveTo(px - 1, by - 15); ctx.lineTo(px + 1, by - 15); ctx.stroke();
+      ctx.strokeStyle = "rgba(180,200,220,0.8)"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(px - 7, by - 19, 6, 6);
+      ctx.strokeRect(px + 1, by - 19, 6, 6);
+      ctx.beginPath(); ctx.moveTo(px - 1, by - 16); ctx.lineTo(px + 1, by - 16); ctx.stroke();
       break;
     case "headphones":
-      ctx.strokeStyle = "#555"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(px, by - 24, 12, Math.PI, 0); ctx.stroke();
-      ctx.fillStyle = "#333"; ctx.fillRect(px - 13, by - 20, 5, 8); ctx.fillRect(px + 8, by - 20, 5, 8);
+      ctx.strokeStyle = "#444"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(px, by - 26, 14, Math.PI, 0); ctx.stroke();
+      ctx.fillStyle = "#333"; ctx.fillRect(px - 15, by - 22, 6, 10); ctx.fillRect(px + 9, by - 22, 6, 10);
+      ctx.fillStyle = "#555"; ctx.fillRect(px - 14, by - 20, 4, 6); ctx.fillRect(px + 10, by - 20, 4, 6);
       break;
     case "hat":
       ctx.fillStyle = vis.shirt;
-      ctx.fillRect(px - 12, by - 27, 24, 5);
-      ctx.fillRect(px - 7, by - 32, 14, 7);
+      ctx.fillRect(px - 14, by - 30, 28, 5);
+      ctx.fillRect(px - 8, by - 36, 16, 8);
+      ctx.fillStyle = "rgba(255,255,255,0.15)";
+      ctx.fillRect(px - 6, by - 34, 12, 2);
       break;
     case "helm":
-      ctx.fillStyle = "#6b7280";
-      ctx.fillRect(px - 10, by - 26, 20, 6);
-      ctx.fillRect(px - 4, by - 30, 8, 6);
+      ctx.fillStyle = "#7a7a8a";
+      ctx.fillRect(px - 12, by - 29, 24, 7);
+      ctx.fillRect(px - 5, by - 34, 10, 7);
+      ctx.fillStyle = "#8a8a9a";
+      ctx.fillRect(px - 10, by - 28, 20, 2);
       break;
     case "scarf":
       ctx.fillStyle = "#e74c3c";
-      ctx.fillRect(px - 9, by - 6, 18, 4);
-      ctx.fillRect(px - 12, by - 4, 6, 12);
+      ctx.fillRect(px - 10, by - 4, 20, 5);
+      ctx.fillRect(px - 14, by - 2, 6, 14);
+      ctx.fillStyle = "#c0392b";
+      ctx.fillRect(px - 13, by + 4, 4, 2);
       break;
     case "tie":
       ctx.fillStyle = "#c0392b";
-      ctx.fillRect(px - 2, by - 3, 4, 10);
-      ctx.beginPath(); ctx.moveTo(px - 3, by + 7); ctx.lineTo(px, by + 12); ctx.lineTo(px + 3, by + 7); ctx.fill();
+      ctx.fillRect(px - 2, by - 1, 4, 12);
+      ctx.beginPath(); ctx.moveTo(px - 3, by + 11); ctx.lineTo(px, by + 16); ctx.lineTo(px + 3, by + 11); ctx.fill();
       break;
     case "badge":
       ctx.fillStyle = "#f59e0b";
-      ctx.beginPath(); ctx.arc(px + 7, by - 2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(px + 8, by, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 5px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("★", px + 8, by + 2);
       break;
   }
 
-  // Status dot + label
-  ctx.beginPath();
-  ctx.arc(px + 12, by - 22, 4.5, 0, Math.PI * 2);
-  ctx.fillStyle = statusColor;
-  ctx.fill();
-  ctx.strokeStyle = "#0d1117"; ctx.lineWidth = 1.5; ctx.stroke();
-  // Status text
-  ctx.font = "bold 7px 'Segoe UI', sans-serif";
+  // ── Emoji above head ──
+  ctx.font = "14px serif";
   ctx.textAlign = "center";
-  ctx.fillStyle = statusColor;
-  ctx.fillText(statusLabel, px, py + 36);
+  ctx.fillText(emoji, px, by - 40);
 
-  // Name pill
-  ctx.font = "bold 9px 'Segoe UI', sans-serif";
-  const nameW = ctx.measureText(name).width + 12;
-  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  // ── Name tag — Gather-style floating pill ──
+  ctx.font = "bold 10px 'Segoe UI', sans-serif";
+  const nameW = ctx.measureText(name).width + 16;
+  const nx = px - nameW / 2;
+  const ny = py + 26;
+  // Pill shape
+  ctx.fillStyle = isSelected ? "rgba(59,130,246,0.9)" : "rgba(255,255,255,0.92)";
   ctx.beginPath();
-  ctx.roundRect(px - nameW / 2, py + 24, nameW, 14, 4);
+  ctx.roundRect(nx, ny, nameW, 16, 8);
   ctx.fill();
-  ctx.fillStyle = isSelected ? "#60a5fa" : isHovered ? "#ffffff" : "#e5e7eb";
-  ctx.fillText(name, px, py + 34);
+  // Status dot inside pill
+  ctx.beginPath();
+  ctx.arc(nx + 7, ny + 8, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = statusColor;
+  ctx.fill();
+  // Name text
+  ctx.fillStyle = isSelected ? "#ffffff" : "#2c2c3a";
+  ctx.textAlign = "center";
+  ctx.fillText(name, px + 2, ny + 12);
 
-  // Emoji badge on body
-  ctx.font = "12px serif";
-  ctx.fillText(emoji, px, by - 34);
-
-  // Interaction bubble
+  // ── Interaction bubble ──
   if (interactionIcon) {
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.beginPath();
-    ctx.roundRect(px - 14, by - 52, 28, 20, 6);
+    ctx.roundRect(px - 16, by - 60, 32, 22, 8);
     ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.1)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Tail
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.beginPath();
-    ctx.moveTo(px - 4, by - 32); ctx.lineTo(px, by - 28); ctx.lineTo(px + 4, by - 32);
+    ctx.moveTo(px - 4, by - 38); ctx.lineTo(px, by - 33); ctx.lineTo(px + 4, by - 38);
     ctx.fill();
-    ctx.font = "13px serif";
+    ctx.font = "14px serif";
     ctx.fillStyle = "#1e293b";
-    ctx.fillText(interactionIcon, px, by - 38);
-  }
-
-  // Speech bubble on hover/select
-  if ((isSelected || isHovered)) {
-    ctx.font = "8px 'Segoe UI', sans-serif";
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    const lvlText = `${emoji} ${name}`;
-    const tw = ctx.measureText(lvlText).width + 16;
-    ctx.beginPath();
-    ctx.roundRect(px - tw / 2, by - 48, tw, 14, 5);
-    ctx.fill();
-    ctx.fillStyle = "#d1d5db";
-    ctx.fillText(lvlText, px, by - 38);
+    ctx.textAlign = "center";
+    ctx.fillText(interactionIcon, px, by - 44);
   }
 }
 
@@ -550,14 +692,17 @@ export default function WorldPage() {
       frameRef.current++;
       const frame = frameRef.current;
       ctx.clearRect(0, 0, CW, CH);
-      ctx.fillStyle = "#080c14";
+      // Background — warm earthy outdoor tone
+      ctx.fillStyle = "#9ab07a";
       ctx.fillRect(0, 0, CW, CH);
-
-      // Hallway tiles
+      // Subtle grass texture
       for (let x = 0; x < MAP_W; x++) {
         for (let y = 0; y < MAP_H; y++) {
-          ctx.fillStyle = (x + y) % 2 === 0 ? "#0c1018" : "#0e1220";
-          ctx.fillRect(x * T, y * T, T, T);
+          const shade = (x + y) % 3 === 0 ? "rgba(0,0,0,0.03)" : (x + y) % 3 === 1 ? "rgba(255,255,255,0.02)" : "transparent";
+          if (shade !== "transparent") {
+            ctx.fillStyle = shade;
+            ctx.fillRect(x * T, y * T, T, T);
+          }
         }
       }
 
@@ -571,11 +716,7 @@ export default function WorldPage() {
 
       // Rooms
       for (const room of ROOMS) {
-        for (let tx = room.x; tx < room.x + room.w; tx++) {
-          for (let ty = room.y; ty < room.y + room.h; ty++) {
-            drawFloorTile(ctx, tx * T, ty * T, room.floor, room.floorTint, tx, ty);
-          }
-        }
+        drawRoomFloor(ctx, room);
         drawRoomWalls(ctx, room);
         drawFurniture(ctx, room, frame);
         drawRoomLabel(ctx, room, roomCounts[room.id] || 0);
