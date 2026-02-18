@@ -197,8 +197,8 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       // Grid helper (subtle)
       const grid = new THREE.GridHelper(16, 16, 0x1f2937, 0x111827);
       grid.position.y = -4;
-      (grid.material as THREE.Material).opacity = 0.3;
-      (grid.material as THREE.Material).transparent = true;
+      (grid.material as any).opacity = 0.3;
+      (grid.material as any).transparent = true;
       scene.add(grid);
 
       // Category color map
