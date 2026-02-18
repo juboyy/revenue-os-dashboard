@@ -110,65 +110,127 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, x: number, y: number, floo
 }
 
 /* ────────────────────────────────── */
-/* WARM OFFICE FLOOR — Gather-style  */
+/* v2.0 ROOM RENDERING — detailed    */
 /* ────────────────────────────────── */
+function drawRoomShadow(ctx: CanvasRenderingContext2D, room: RoomDef) {
+  const rx = room.x * T + 4, ry = room.y * T + 4;
+  const rw = room.w * T, rh = room.h * T;
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.beginPath();
+  ctx.roundRect(rx, ry, rw, rh, 4);
+  ctx.fill();
+}
+
 function drawRoomFloor(ctx: CanvasRenderingContext2D, room: RoomDef) {
   const rx = room.x * T, ry = room.y * T;
   const rw = room.w * T, rh = room.h * T;
-  // Warm base floor
   const floorColors: Record<string, string> = {
-    wood: "#d4c4a8", tile: "#c8d0d8", carpet: "#b8c0b0", stone: "#bbb8b0",
+    wood: "#d4c4a8", tile: "#dde2e8", carpet: "#c5ccb8", stone: "#c8c4bc",
   };
   ctx.fillStyle = floorColors[room.floor] || "#d0c8b8";
   ctx.fillRect(rx, ry, rw, rh);
-  // Subtle tile grid
-  ctx.strokeStyle = "rgba(0,0,0,0.06)";
-  ctx.lineWidth = 0.5;
-  for (let gx = rx; gx <= rx + rw; gx += T) {
-    ctx.beginPath(); ctx.moveTo(gx, ry); ctx.lineTo(gx, ry + rh); ctx.stroke();
-  }
-  for (let gy = ry; gy <= ry + rh; gy += T) {
-    ctx.beginPath(); ctx.moveTo(rx, gy); ctx.lineTo(rx + rw, gy); ctx.stroke();
+
+  // Detailed floor patterns
+  if (room.floor === "wood") {
+    for (let py = ry; py < ry + rh; py += 8) {
+      ctx.fillStyle = py % 16 === 0 ? "rgba(160,120,70,0.08)" : "rgba(120,90,50,0.06)";
+      ctx.fillRect(rx, py, rw, 8);
+      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fillRect(rx, py + 7, rw, 1);
+      // Wood knots
+      for (let kx = rx + (py % 32) * 3; kx < rx + rw; kx += 64) {
+        ctx.fillStyle = "rgba(100,70,30,0.06)";
+        ctx.beginPath(); ctx.arc(kx, py + 4, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  } else if (room.floor === "tile") {
+    for (let tx = rx; tx < rx + rw; tx += T) {
+      for (let ty = ry; ty < ry + rh; ty += T) {
+        ctx.fillStyle = (Math.floor(tx / T) + Math.floor(ty / T)) % 2 === 0 ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.02)";
+        ctx.fillRect(tx, ty, T, T);
+        ctx.strokeStyle = "rgba(0,0,0,0.06)";
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(tx + 0.5, ty + 0.5, T - 1, T - 1);
+      }
+    }
+  } else if (room.floor === "carpet") {
+    // Carpet weave texture
+    for (let py = ry; py < ry + rh; py += 4) {
+      for (let px = rx; px < rx + rw; px += 4) {
+        ctx.fillStyle = (px + py) % 8 === 0 ? "rgba(80,100,60,0.05)" : "rgba(100,120,80,0.03)";
+        ctx.fillRect(px, py, 4, 4);
+      }
+    }
+    // Carpet border/rug area
+    ctx.strokeStyle = "rgba(80,60,40,0.15)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rx + 12, ry + 26, rw - 24, rh - 38);
+  } else {
+    // Stone — irregular cobble look
+    for (let tx = rx; tx < rx + rw; tx += T) {
+      for (let ty = ry; ty < ry + rh; ty += T) {
+        const offset = (Math.floor(ty / T)) % 2 === 0 ? 0 : T / 2;
+        ctx.strokeStyle = "rgba(0,0,0,0.06)";
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(tx + offset, ty, T, T);
+        ctx.fillStyle = `rgba(0,0,0,${0.01 + Math.sin(tx * 0.3 + ty * 0.7) * 0.02})`;
+        ctx.fillRect(tx + offset, ty, T, T);
+      }
+    }
   }
 }
 
 function drawRoomWalls(ctx: CanvasRenderingContext2D, room: RoomDef) {
   const rx = room.x * T, ry = room.y * T;
   const rw = room.w * T, rh = room.h * T;
-  // Outer wall
-  ctx.strokeStyle = "#8a8478";
-  ctx.lineWidth = 3;
+  // Wall base (cream/beige top strip)
+  ctx.fillStyle = "#e8e0d0";
+  ctx.fillRect(rx, ry, rw, 22);
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillRect(rx, ry + 20, rw, 2);
+  // Outer wall stroke
+  ctx.strokeStyle = "#9a9488";
+  ctx.lineWidth = 2;
   ctx.strokeRect(rx, ry, rw, rh);
-  // Inner edge highlight
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+  // Inner baseboard
+  ctx.fillStyle = "rgba(120,100,70,0.12)";
+  ctx.fillRect(rx + 1, ry + rh - 4, rw - 2, 3);
 }
 
 function drawRoomLabel(ctx: CanvasRenderingContext2D, room: RoomDef, agentCount: number) {
   const rx = room.x * T, ry = room.y * T, rw = room.w * T;
-  ctx.font = "bold 11px 'Segoe UI', sans-serif";
-  const label = room.label;
-  const tw = ctx.measureText(label).width + 24;
-  const lx = rx + rw / 2 - tw / 2;
-  // Pill background
-  ctx.fillStyle = "rgba(255,255,255,0.88)";
-  ctx.beginPath();
-  ctx.roundRect(lx, ry + 6, tw, 18, 9);
-  ctx.fill();
-  ctx.fillStyle = "#4a4540";
-  ctx.textAlign = "center";
-  ctx.fillText(label, rx + rw / 2, ry + 19);
-  // Agent count badge on right
+  // Icon + label on wall strip
+  ctx.font = "12px serif";
+  ctx.textAlign = "left";
+  ctx.fillText(room.icon, rx + 6, ry + 15);
+  ctx.font = "bold 10px 'Segoe UI', sans-serif";
+  ctx.fillStyle = "#5a5040";
+  ctx.fillText(room.label, rx + 24, ry + 14);
+  // Agent count
   if (agentCount > 0) {
+    const bx = rx + rw - 20;
     ctx.fillStyle = "#5b8c5a";
-    ctx.beginPath();
-    ctx.arc(lx + tw + 6, ry + 15, 8, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, ry + 11, 7, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.font = "bold 8px 'Segoe UI', sans-serif";
-    ctx.fillText(`${agentCount}`, lx + tw + 6, ry + 18);
+    ctx.textAlign = "center";
+    ctx.fillText(`${agentCount}`, bx, ry + 14);
   }
+}
+
+function drawWallDecorations(ctx: CanvasRenderingContext2D, room: RoomDef, frame: number) {
+  const rx = room.x * T, ry = room.y * T, rw = room.w * T;
+  // Clock on wall
+  const cx = rx + rw - 22, cy = ry + 11;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#999"; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.stroke();
+  // Clock hands
+  const angle = (frame * 0.005) % (Math.PI * 2);
+  ctx.strokeStyle = "#333"; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angle) * 4, cy + Math.sin(angle) * 4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angle * 12) * 3, cy + Math.sin(angle * 12) * 3); ctx.stroke();
 }
 
 /* ────────────────────────────────── */
@@ -333,107 +395,191 @@ function drawFurniture(ctx: CanvasRenderingContext2D, room: RoomDef, frame: numb
 }
 
 // ══════════════════════════════════════════════════════════
-// OUTDOOR DECORATIONS — trees, bushes, paths, fences
+// OUTDOOR ENVIRONMENT — trees, bushes, paths, benches, fences, lamps
 // ══════════════════════════════════════════════════════════
 function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, frame: number) {
   const s = size;
-  const sway = Math.sin(frame * 0.02 + x * 0.1) * 1.5;
+  const sway = Math.sin(frame * 0.015 + x * 0.08) * 1.2;
+  // Shadow on ground
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.beginPath(); ctx.ellipse(x, y + 14 * s, 14 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
   // Trunk
   ctx.fillStyle = "#6b4a2a";
   ctx.fillRect(x - 3 * s, y, 6 * s, 16 * s);
   ctx.fillStyle = "#7d5c38";
-  ctx.fillRect(x - 2 * s, y + 1, 4 * s, 2 * s);
+  ctx.fillRect(x - 2 * s, y + 2, 4 * s, 3 * s);
   // Canopy layers
-  ctx.fillStyle = "#3a7d2e";
-  ctx.beginPath(); ctx.arc(x + sway, y - 6 * s, 12 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#2d6b22";
+  ctx.beginPath(); ctx.arc(x + sway, y - 8 * s, 14 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#3a8a2e";
+  ctx.beginPath(); ctx.arc(x - 5 * s + sway * 0.7, y - 3 * s, 9 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 6 * s + sway * 0.5, y - 4 * s, 8 * s, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = "#4a9a3e";
-  ctx.beginPath(); ctx.arc(x - 4 * s + sway * 0.7, y - 2 * s, 8 * s, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + 5 * s + sway * 0.5, y - 3 * s, 7 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 2 * s + sway, y - 10 * s, 8 * s, 0, Math.PI * 2); ctx.fill();
   // Highlight
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
-  ctx.beginPath(); ctx.arc(x - 2 + sway, y - 8 * s, 6 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.beginPath(); ctx.arc(x - 3 + sway, y - 10 * s, 5 * s, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawBush(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
-  const sway = Math.sin(frame * 0.025 + y * 0.1) * 1;
-  ctx.fillStyle = "#4a8c3f";
-  ctx.beginPath(); ctx.arc(x + sway, y, 8, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#5ba84e";
-  ctx.beginPath(); ctx.arc(x - 4 + sway, y + 2, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + 5 + sway, y + 1, 6, 0, Math.PI * 2); ctx.fill();
+  const sway = Math.sin(frame * 0.02 + y * 0.1) * 0.8;
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.beginPath(); ctx.ellipse(x, y + 7, 10, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#3a7830";
+  ctx.beginPath(); ctx.arc(x + sway, y, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#4a9a3e";
+  ctx.beginPath(); ctx.arc(x - 5 + sway, y + 2, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 6 + sway, y + 1, 7, 0, Math.PI * 2); ctx.fill();
+  // Berry dots
+  ctx.fillStyle = "#c0392b";
+  ctx.beginPath(); ctx.arc(x + 3 + sway, y - 3, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x - 2 + sway, y + 1, 1.5, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawFlower(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, frame: number) {
-  const sway = Math.sin(frame * 0.04 + x) * 1;
+  const sway = Math.sin(frame * 0.03 + x) * 1;
   ctx.fillStyle = "#4a8c3f";
-  ctx.fillRect(x, y + 3, 2, 6);
+  ctx.fillRect(x, y + 3, 2, 7);
   ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(x + 1 + sway, y + 2, 3, 0, Math.PI * 2); ctx.fill();
+  for (let a = 0; a < 5; a++) {
+    const angle = (a / 5) * Math.PI * 2;
+    ctx.beginPath(); ctx.arc(x + 1 + sway + Math.cos(angle) * 2.5, y + 2 + Math.sin(angle) * 2.5, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.fillStyle = "#fff";
-  ctx.beginPath(); ctx.arc(x + 1 + sway, y + 1, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 1 + sway, y + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBench(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = "rgba(0,0,0,0.06)";
+  ctx.beginPath(); ctx.ellipse(x + 15, y + 14, 17, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#8B7355";
+  ctx.fillRect(x, y, 30, 3); // seat
+  ctx.fillRect(x, y - 8, 30, 3); // back
+  ctx.fillStyle = "#6b5a3a";
+  ctx.fillRect(x + 2, y + 3, 3, 10); // legs
+  ctx.fillRect(x + 25, y + 3, 3, 10);
+  ctx.fillRect(x + 2, y - 5, 3, 5);
+  ctx.fillRect(x + 25, y - 5, 3, 5);
+}
+
+function drawLampPost(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.beginPath(); ctx.ellipse(x, y + 22, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#555";
+  ctx.fillRect(x - 2, y, 4, 22);
+  ctx.fillStyle = "#666";
+  ctx.fillRect(x - 4, y - 2, 8, 4);
+  // Light glow
+  const glow = 0.08 + Math.sin(frame * 0.04) * 0.03;
+  ctx.fillStyle = `rgba(255,220,130,${glow})`;
+  ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffd580";
+  ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawFence(ctx: CanvasRenderingContext2D, x: number, y: number, length: number, vertical: boolean) {
+  ctx.fillStyle = "#a88c60";
+  for (let i = 0; i < length; i += 12) {
+    if (vertical) {
+      ctx.fillRect(x - 1, y + i, 3, 10); // post
+      ctx.fillRect(x, y + i + 3, 1, 4); // cross
+    } else {
+      ctx.fillRect(x + i, y - 1, 3, 10); // post
+    }
+  }
+  // Rails
+  if (vertical) {
+    ctx.fillRect(x - 1, y, 1, length);
+    ctx.fillRect(x + 1, y, 1, length);
+  } else {
+    ctx.fillRect(x, y + 2, length, 1);
+    ctx.fillRect(x, y + 6, length, 1);
+  }
 }
 
 function drawPath(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, width: number) {
   ctx.fillStyle = "#c4b89a";
   if (x1 === x2) {
-    // Vertical path
     ctx.fillRect(x1 - width / 2, Math.min(y1, y2), width, Math.abs(y2 - y1));
   } else {
-    // Horizontal path
     ctx.fillRect(Math.min(x1, x2), y1 - width / 2, Math.abs(x2 - x1), width);
   }
-  // Path edges
-  ctx.fillStyle = "rgba(0,0,0,0.06)";
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
   if (x1 === x2) {
-    ctx.fillRect(x1 - width / 2, Math.min(y1, y2), 2, Math.abs(y2 - y1));
-    ctx.fillRect(x1 + width / 2 - 2, Math.min(y1, y2), 2, Math.abs(y2 - y1));
+    ctx.fillRect(x1 - width / 2, Math.min(y1, y2), 1, Math.abs(y2 - y1));
+    ctx.fillRect(x1 + width / 2, Math.min(y1, y2), 1, Math.abs(y2 - y1));
   } else {
-    ctx.fillRect(Math.min(x1, x2), y1 - width / 2, Math.abs(x2 - x1), 2);
-    ctx.fillRect(Math.min(x1, x2), y1 + width / 2 - 2, Math.abs(x2 - x1), 2);
+    ctx.fillRect(Math.min(x1, x2), y1 - width / 2, Math.abs(x2 - x1), 1);
+    ctx.fillRect(Math.min(x1, x2), y1 + width / 2, Math.abs(x2 - x1), 1);
+  }
+  // Stepping stones
+  ctx.fillStyle = "rgba(180,170,140,0.4)";
+  const len = Math.abs(x1 === x2 ? y2 - y1 : x2 - x1);
+  for (let i = 8; i < len; i += 16) {
+    if (x1 === x2) {
+      ctx.beginPath(); ctx.arc(x1, Math.min(y1, y2) + i, 3, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(Math.min(x1, x2) + i, y1, 3, 0, Math.PI * 2); ctx.fill();
+    }
   }
 }
 
 function drawOutdoorDecorations(ctx: CanvasRenderingContext2D, frame: number) {
-  // Trees along edges
+  // Trees along edges (with shadows)
   const treePositions = [
-    [16, 16], [80, 20], [420, 12], [560, 18], [750, 14], [900, 20], [1050, 16], [1200, 18],
-    [10, 280], [10, 480], [10, 700], [1310, 100], [1310, 350], [1310, 550], [1310, 750],
-    [200, 920], [500, 930], [800, 920], [1100, 930],
+    [16, 24], [100, 20], [460, 16], [600, 22], [780, 18], [980, 22], [1120, 18], [1240, 20],
+    [14, 300], [14, 520], [14, 740], [1318, 120], [1318, 380], [1318, 580], [1318, 780],
+    [220, 930], [540, 935], [840, 928], [1140, 932],
   ];
-  for (const [tx, ty] of treePositions) {
-    drawTree(ctx, tx, ty, 1 + Math.sin(tx * 0.01) * 0.3, frame);
-  }
+  for (const [tx, ty] of treePositions) drawTree(ctx, tx, ty, 1.1 + Math.sin(tx * 0.01) * 0.2, frame);
 
-  // Bushes scattered
-  const bushPositions = [
-    [50, 50], [150, 30], [300, 45], [650, 35], [850, 45], [1100, 35], [1250, 50],
-    [50, 900], [350, 910], [650, 900], [950, 910], [1250, 900],
-    [30, 150], [30, 400], [30, 600], [1300, 200], [1300, 470], [1300, 680],
+  // Bushes
+  const bushPos = [
+    [60, 40], [170, 28], [330, 38], [690, 30], [890, 40], [1140, 32], [1270, 45],
+    [60, 910], [380, 915], [688, 905], [988, 912], [1270, 908],
+    [28, 180], [28, 440], [28, 650], [1310, 230], [1310, 500], [1310, 710],
   ];
-  for (const [bx, by] of bushPositions) {
-    drawBush(ctx, bx, by, frame);
-  }
+  for (const [bx, by] of bushPos) drawBush(ctx, bx, by, frame);
 
   // Flowers
-  const flowerColors = ["#e74c3c", "#f1c40f", "#e67e22", "#9b59b6", "#3498db", "#e91e63"];
-  for (let i = 0; i < 30; i++) {
-    const fx = 40 + (i * 47) % 1280;
-    const fy = i < 15 ? 35 + (i * 7) % 25 : 905 + (i * 5) % 20;
+  const flowerColors = ["#e74c3c", "#f1c40f", "#e67e22", "#9b59b6", "#3498db", "#e91e63", "#ff6b9d", "#ffd93d"];
+  for (let i = 0; i < 40; i++) {
+    const fx = 45 + (i * 37) % 1270;
+    const fy = i < 20 ? 32 + (i * 11) % 20 : 910 + (i * 7) % 18;
     drawFlower(ctx, fx, fy, flowerColors[i % flowerColors.length], frame);
   }
 
-  // Paths connecting rooms (sandy walkways)
-  drawPath(ctx, 9 * T + T / 2, 4 * T, 11 * T, 4 * T, 14);
-  drawPath(ctx, 20 * T, 7 * T + T / 2, 20 * T, 9 * T, 14);
-  drawPath(ctx, 31 * T, 7 * T + T / 2, 31 * T, 9 * T, 14);
-  drawPath(ctx, 9 * T + T / 2, 14 * T, 11 * T, 14 * T, 14);
-  drawPath(ctx, 20 * T, 16 * T, 20 * T, 18 * T, 14);
+  // Paths connecting rooms
+  drawPath(ctx, 9 * T + T / 2, 4 * T, 11 * T, 4 * T, 16);
+  drawPath(ctx, 20 * T, 7 * T + T / 2, 20 * T, 9 * T, 16);
+  drawPath(ctx, 30 * T, 7 * T + T / 2, 31 * T, 9 * T, 14);
+  drawPath(ctx, 9 * T + T / 2, 15 * T, 11 * T, 15 * T, 16);
+  drawPath(ctx, 22 * T, 16 * T, 24 * T, 16 * T, 14);
+  drawPath(ctx, 16 * T, 8 * T, 16 * T, 9 * T, 12);
+  drawPath(ctx, 16 * T, 24 * T, 16 * T, 25 * T, 12);
+
+  // Benches
+  drawBench(ctx, 340, 932);
+  drawBench(ctx, 740, 928);
+  drawBench(ctx, 1060, 932);
+
+  // Lamp posts
+  drawLampPost(ctx, 160, 18, frame);
+  drawLampPost(ctx, 700, 14, frame);
+  drawLampPost(ctx, 1080, 16, frame);
+  drawLampPost(ctx, 160, 920, frame);
+  drawLampPost(ctx, 900, 918, frame);
+
+  // Fences along bottom
+  drawFence(ctx, 35, 948, 200, false);
+  drawFence(ctx, 450, 948, 200, false);
+  drawFence(ctx, 870, 948, 200, false);
 }
 
 // ══════════════════════════════════════════════════════════
 // CHARACTER DRAWING — Gather-style chibi pixel art (1.6x scale)
 // ══════════════════════════════════════════════════════════
-const SPRITE_SCALE = 1.6;
+const SPRITE_SCALE = 1.0;
 
 function drawCharacter(
   ctx: CanvasRenderingContext2D, px: number, py: number,
@@ -718,6 +864,7 @@ export default function WorldPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const frameRef = useRef(0);
   const particlesRef = useRef<Particle[]>(createParticles(50));
   const interactionsRef = useRef<Record<string, { icon: string; ttl: number }>>({});
@@ -824,22 +971,24 @@ export default function WorldPage() {
         if (p) roomCounts[p.currentRoom] = (roomCounts[p.currentRoom] || 0) + 1;
       });
 
-      // Rooms
+      // Rooms — shadow first, then floor/walls/furniture/label
+      for (const room of ROOMS) drawRoomShadow(ctx, room);
       for (const room of ROOMS) {
         drawRoomFloor(ctx, room);
         drawRoomWalls(ctx, room);
         drawFurniture(ctx, room, frame);
+        drawWallDecorations(ctx, room, frame);
         drawRoomLabel(ctx, room, roomCounts[room.id] || 0);
       }
 
-      // Particles
+      // Leaf particles (green-tinted for outdoor feel)
       for (const p of particlesRef.current) {
-        p.x += p.vx; p.y += p.vy; p.life--;
+        p.x += p.vx + Math.sin(p.life * 0.02) * 0.1; p.y += p.vy; p.life--;
         if (p.life <= 0 || p.y < 0 || p.x < 0 || p.x > CW) {
           p.x = Math.random() * CW; p.y = CH + 10; p.life = 300 + Math.random() * 300;
         }
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${p.alpha * 0.4})`; ctx.fill();
+        ctx.fillStyle = `rgba(100,160,60,${p.alpha * 0.3})`; ctx.fill();
       }
 
       // Tick interactions
@@ -904,6 +1053,7 @@ export default function WorldPage() {
   const handleMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const agent = getAgentAt(e);
     setHoveredAgent(agent?.id || null);
+    setMousePos({ x: e.clientX, y: e.clientY });
     if (canvasRef.current) canvasRef.current.style.cursor = agent ? "pointer" : "default";
   }, [getAgentAt]);
 
@@ -943,6 +1093,53 @@ export default function WorldPage() {
         onClick={handleClick} onMouseMove={handleMove}
         className="w-full h-full pt-10"
         style={{ imageRendering: "auto", objectFit: "contain", background: "#7a9960" }} />
+
+      {/* ═══ HOVER TOOLTIP ═══ */}
+      <AnimatePresence>
+        {hoveredAgent && !selectedAgent && (() => {
+          const agent = agents.find(a => a.id === hoveredAgent);
+          if (!agent) return null;
+          const lvl = getLevelFromXP(agent.xp);
+          const st = STATUS_CFG[agent.status] || STATUS_CFG.idle;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.12 }}
+              className="fixed z-50 pointer-events-none"
+              style={{ left: mousePos.x + 16, top: mousePos.y - 8 }}
+            >
+              <div className="rounded-xl p-3 min-w-[200px] shadow-xl"
+                style={{ background: "rgba(255,255,255,0.96)", border: "1px solid rgba(0,0,0,0.08)", backdropFilter: "blur(12px)" }}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xl">{agent.emoji}</span>
+                  <div>
+                    <div className="text-xs font-bold text-gray-800">{agent.name}</div>
+                    <div className="text-[9px] text-gray-500">{agent.department}</div>
+                  </div>
+                  <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ color: st.color, background: `${st.color}15` }}>● {st.label}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] text-gray-600 mb-1">
+                  <span>Nv.{lvl.level} {lvl.title}</span>
+                  <span>•</span>
+                  <span>{agent.xp ?? 0} XP</span>
+                  <span>•</span>
+                  <span>🔥 {agent.streak_days ?? 0}d</span>
+                </div>
+                {/* XP bar */}
+                <div className="h-1 rounded-full bg-gray-200 overflow-hidden mb-1">
+                  <div className="h-full rounded-full bg-gradient-to-r from-purple-400 to-blue-400" style={{ width: `${lvl.progress}%` }} />
+                </div>
+                {agent.current_task && (
+                  <div className="text-[9px] text-gray-500 mt-1 border-t border-gray-100 pt-1">
+                    📋 {agent.current_task}
+                  </div>
+                )}
+                <div className="text-[8px] text-gray-400 mt-1 italic">Clique para detalhes</div>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ═══ FLOATING AGENT INSPECTOR (right panel) ═══ */}
       <AnimatePresence>
