@@ -22,21 +22,21 @@ interface RoomDef {
 }
 
 const ROOMS: RoomDef[] = [
-  { id: "ponte-de-comando", label: "Command Bridge", icon: "⚓", color: "#f59e0b", x: 1, y: 1, w: 9, h: 7, floor: "wood", floorTint: "#2a1f14" },
-  { id: "forja", label: "Engineering", icon: "⚔️", color: "#3b82f6", x: 11, y: 1, w: 9, h: 7, floor: "tile", floorTint: "#141e2e" },
-  { id: "tesouraria", label: "Treasury", icon: "💎", color: "#10b981", x: 21, y: 1, w: 9, h: 7, floor: "carpet", floorTint: "#0d2818" },
-  { id: "sala-reuniao", label: "Meeting Room", icon: "🤝", color: "#60a5fa", x: 31, y: 1, w: 10, h: 9, floor: "carpet", floorTint: "#0f1a2e", type: "common" },
-  { id: "laboratorio", label: "Analytics Lab", icon: "🔬", color: "#06b6d4", x: 1, y: 9, w: 9, h: 7, floor: "tile", floorTint: "#0d1f24" },
-  { id: "estaleiro", label: "Architecture", icon: "🏗️", color: "#8b5cf6", x: 11, y: 9, w: 9, h: 7, floor: "stone", floorTint: "#1a152e" },
-  { id: "biblioteca", label: "Library", icon: "📚", color: "#ec4899", x: 21, y: 9, w: 9, h: 7, floor: "wood", floorTint: "#2a1420" },
-  { id: "lobby", label: "Central Lobby", icon: "🏛️", color: "#94a3b8", x: 11, y: 17, w: 12, h: 7, floor: "tile", floorTint: "#121824", type: "common" },
-  { id: "sala-de-maquinas", label: "Engine Room", icon: "⚙️", color: "#ef4444", x: 1, y: 17, w: 9, h: 7, floor: "stone", floorTint: "#2a1414" },
-  { id: "torre-de-vigia", label: "Watchtower", icon: "🔭", color: "#f97316", x: 24, y: 17, w: 9, h: 7, floor: "wood", floorTint: "#2a2014" },
-  { id: "cafe", label: "Café & Lounge", icon: "☕", color: "#a78bfa", x: 31, y: 11, w: 10, h: 9, floor: "wood", floorTint: "#1e1418", type: "common" },
-  { id: "cozinha", label: "Comms Center", icon: "📡", color: "#a855f7", x: 1, y: 25, w: 9, h: 4, floor: "carpet", floorTint: "#1e142a" },
-  { id: "jardim", label: "Zen Garden", icon: "🌿", color: "#4ade80", x: 11, y: 25, w: 12, h: 4, floor: "stone", floorTint: "#0d1f14", type: "common" },
-  { id: "billing-room", label: "Billing Office", icon: "🎯", color: "#fb923c", x: 24, y: 25, w: 9, h: 4, floor: "tile", floorTint: "#2a1f0e" },
-  { id: "auditorio", label: "All-Hands Arena", icon: "🎪", color: "#fbbf24", x: 31, y: 21, w: 10, h: 8, floor: "carpet", floorTint: "#2a2010", type: "common" },
+  { id: "ponte-de-comando", label: "Ponte de Comando", icon: "⚓", color: "#f59e0b", x: 1, y: 1, w: 9, h: 7, floor: "wood", floorTint: "#2a1f14" },
+  { id: "forja", label: "Engenharia", icon: "⚔️", color: "#3b82f6", x: 11, y: 1, w: 9, h: 7, floor: "tile", floorTint: "#141e2e" },
+  { id: "tesouraria", label: "Tesouraria", icon: "💎", color: "#10b981", x: 21, y: 1, w: 9, h: 7, floor: "carpet", floorTint: "#0d2818" },
+  { id: "sala-reuniao", label: "Sala de Reunião", icon: "🤝", color: "#60a5fa", x: 31, y: 1, w: 10, h: 9, floor: "carpet", floorTint: "#0f1a2e", type: "common" },
+  { id: "laboratorio", label: "Lab. Análises", icon: "🔬", color: "#06b6d4", x: 1, y: 9, w: 9, h: 7, floor: "tile", floorTint: "#0d1f24" },
+  { id: "estaleiro", label: "Arquitetura", icon: "🏗️", color: "#8b5cf6", x: 11, y: 9, w: 9, h: 7, floor: "stone", floorTint: "#1a152e" },
+  { id: "biblioteca", label: "Biblioteca", icon: "📚", color: "#ec4899", x: 21, y: 9, w: 9, h: 7, floor: "wood", floorTint: "#2a1420" },
+  { id: "lobby", label: "Lobby Central", icon: "🏛️", color: "#94a3b8", x: 11, y: 17, w: 12, h: 7, floor: "tile", floorTint: "#121824", type: "common" },
+  { id: "sala-de-maquinas", label: "Sala de Máquinas", icon: "⚙️", color: "#ef4444", x: 1, y: 17, w: 9, h: 7, floor: "stone", floorTint: "#2a1414" },
+  { id: "torre-de-vigia", label: "Torre de Vigia", icon: "🔭", color: "#f97316", x: 24, y: 17, w: 9, h: 7, floor: "wood", floorTint: "#2a2014" },
+  { id: "cafe", label: "Café & Descanso", icon: "☕", color: "#a78bfa", x: 31, y: 11, w: 10, h: 9, floor: "wood", floorTint: "#1e1418", type: "common" },
+  { id: "cozinha", label: "Central de Comms", icon: "📡", color: "#a855f7", x: 1, y: 25, w: 9, h: 4, floor: "carpet", floorTint: "#1e142a" },
+  { id: "jardim", label: "Jardim Zen", icon: "🌿", color: "#4ade80", x: 11, y: 25, w: 12, h: 4, floor: "stone", floorTint: "#0d1f14", type: "common" },
+  { id: "billing-room", label: "Escritório Billing", icon: "🎯", color: "#fb923c", x: 24, y: 25, w: 9, h: 4, floor: "tile", floorTint: "#2a1f0e" },
+  { id: "auditorio", label: "Auditório Geral", icon: "🎪", color: "#fbbf24", x: 31, y: 21, w: 10, h: 8, floor: "carpet", floorTint: "#2a2010", type: "common" },
 ];
 
 // Unique visual profile per agent index
@@ -59,30 +59,30 @@ const AGENT_VISUALS: AgentVisual[] = [
 ];
 
 const STATUS_CFG: Record<string, { label: string; color: string; glow: boolean }> = {
-  active:   { label: "ACTIVE",   color: "#10b981", glow: true },
-  working:  { label: "WORKING",  color: "#3b82f6", glow: true },
-  idle:     { label: "IDLE",     color: "#6b7280", glow: false },
-  error:    { label: "ERROR",    color: "#ef4444", glow: true },
-  sleeping: { label: "SLEEPING", color: "#4b5563", glow: false },
+  active:   { label: "ATIVO",      color: "#10b981", glow: true },
+  working:  { label: "TRABALHANDO", color: "#3b82f6", glow: true },
+  idle:     { label: "OCIOSO",     color: "#6b7280", glow: false },
+  error:    { label: "ERRO",       color: "#ef4444", glow: true },
+  sleeping: { label: "DORMINDO",   color: "#4b5563", glow: false },
 };
 
 const INTERACTIONS = [
-  { type: "meeting", icon: "📋", label: "Sprint Review" },
-  { type: "coffee", icon: "☕", label: "Coffee Break" },
-  { type: "pairing", icon: "👥", label: "Pair Coding" },
+  { type: "meeting", icon: "📋", label: "Revisão de Sprint" },
+  { type: "coffee", icon: "☕", label: "Pausa para Café" },
+  { type: "pairing", icon: "👥", label: "Programação em Par" },
   { type: "debate", icon: "💡", label: "Brainstorming" },
-  { type: "review", icon: "🔍", label: "Code Review" },
+  { type: "review", icon: "🔍", label: "Revisão de Código" },
 ];
 
 const MENU_ITEMS = [
-  { label: "Command Center", href: "/", icon: "🎯" },
-  { label: "Office", href: "/world", icon: "🏢" },
-  { label: "Org Chart", href: "/orgchart", icon: "🌳" },
-  { label: "Tasks", href: "/tasks", icon: "📋" },
+  { label: "Central", href: "/", icon: "🎯" },
+  { label: "Escritório", href: "/world", icon: "🏢" },
+  { label: "Organograma", href: "/orgchart", icon: "🌳" },
+  { label: "Tarefas", href: "/tasks", icon: "📋" },
   { label: "Monitor", href: "/monitoring", icon: "📊" },
-  { label: "Memory", href: "/memory", icon: "🧠" },
+  { label: "Memória", href: "/memory", icon: "🧠" },
   { label: "Spawn", href: "/spawn", icon: "⚡" },
-  { label: "Board", href: "/leaderboard", icon: "🏆" },
+  { label: "Ranking", href: "/leaderboard", icon: "🏆" },
 ];
 
 // ══════════════════════════════════════════════════════════
@@ -665,7 +665,7 @@ export default function WorldPage() {
         style={{ background: "rgba(8,12,20,0.88)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center gap-1.5">
           <span className="text-base mr-1">🏴‍☠️</span>
-          <span className="text-[10px] font-bold text-white tracking-wider uppercase mr-3">VIRTUAL OFFICE</span>
+          <span className="text-[10px] font-bold text-white tracking-wider uppercase mr-3">ESCRITÓRIO VIRTUAL</span>
           <div className="h-4 w-px bg-white/10 mr-2" />
           {MENU_ITEMS.map(item => {
             const isActive = item.href === "/world";
@@ -681,9 +681,9 @@ export default function WorldPage() {
           })}
         </div>
         <div className="flex items-center gap-3 text-[10px]">
-          <span className="text-green-400 font-mono">{activeCount}/{agents.length} <span className="text-gray-600">active</span></span>
+          <span className="text-green-400 font-mono">{activeCount}/{agents.length} <span className="text-gray-600">ativos</span></span>
           <span className="text-gray-600">●</span>
-          <span className="text-gray-500 font-mono">LIVE</span>
+          <span className="text-gray-500 font-mono">AO VIVO</span>
         </div>
       </div>
 
@@ -732,7 +732,7 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
             <p className="text-[10px] text-gray-500 font-mono">{agent.department}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded" style={{ color: st.color, background: `${st.color}15` }}>● {st.label}</span>
-              <span className="text-purple-400 text-[9px] font-mono">Lv.{lvl.level} {lvl.title}</span>
+              <span className="text-purple-400 text-[9px] font-mono">Nv.{lvl.level} {lvl.title}</span>
             </div>
           </div>
         </div>
@@ -753,10 +753,10 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Tasks", value: agent.tasks_completed, c: "text-green-400", icon: "✅" },
-          { label: "Streak", value: `${agent.streak_days}d`, c: "text-amber-400", icon: "🔥" },
+          { label: "Tarefas", value: agent.tasks_completed, c: "text-green-400", icon: "✅" },
+          { label: "Sequência", value: `${agent.streak_days}d`, c: "text-amber-400", icon: "🔥" },
           { label: "Tokens", value: `${(agent.tokens_today / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
-          { label: "Blocked", value: agent.tasks_blocked, c: "text-red-400", icon: "🚫" },
+          { label: "Bloqueado", value: agent.tasks_blocked, c: "text-red-400", icon: "🚫" },
         ].map(k => (
           <div key={k.label} className="p-2 rounded-lg bg-ocean-900/50 text-center">
             <div className="text-sm">{k.icon}</div>
@@ -768,7 +768,7 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
 
       {/* Stats Bars */}
       <div className="space-y-1.5">
-        <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Stats</h4>
+        <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Estatísticas</h4>
         {Object.entries(agent.stats).map(([stat, val]) => (
           <div key={stat} className="flex items-center gap-1.5">
             <span className="text-gray-500 w-16 capitalize text-[9px]">{stat}</span>
@@ -788,7 +788,7 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* Achievements */}
       {agent.achievements.length > 0 && (
         <div>
-          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Achievements</h4>
+          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas</h4>
           <div className="flex flex-wrap gap-1">
             {agent.achievements.map(a => (
               <span key={a.id} title={`${a.name}: ${a.description}`}
@@ -802,16 +802,16 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* Current Task */}
       {agent.current_task && (
         <div className="border-t border-glass-border pt-2">
-          <h4 className="text-[8px] uppercase text-gray-600 font-mono mb-0.5">Current Task</h4>
+          <h4 className="text-[8px] uppercase text-gray-600 font-mono mb-0.5">Tarefa Atual</h4>
           <p className="text-[10px] text-gray-300 font-mono">{agent.current_task}</p>
         </div>
       )}
 
       {/* Lifecycle Actions */}
       <div className="border-t border-glass-border pt-2 flex gap-1.5">
-        <button className="flex-1 py-1.5 rounded text-[9px] font-mono bg-green-500/10 text-green-400 hover:bg-green-500/20 transition">⬆ Promote</button>
-        <button className="flex-1 py-1.5 rounded text-[9px] font-mono bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">📋 Review</button>
-        <button className="flex-1 py-1.5 rounded text-[9px] font-mono bg-red-500/10 text-red-400 hover:bg-red-500/20 transition">⛔ Dismiss</button>
+        <button className="flex-1 py-1.5 rounded text-[9px] font-mono bg-green-500/10 text-green-400 hover:bg-green-500/20 transition">⬆ Promover</button>
+        <button className="flex-1 py-1.5 rounded text-[9px] font-mono bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">📋 Revisar</button>
+        <button className="flex-1 py-1.5 rounded text-[9px] font-mono bg-red-500/10 text-red-400 hover:bg-red-500/20 transition">⛔ Demitir</button>
       </div>
     </div>
   );

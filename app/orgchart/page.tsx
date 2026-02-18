@@ -41,9 +41,9 @@ export default function OrgChartPage() {
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-          <span className="text-3xl">🌳</span> Org Chart
+          <span className="text-3xl">🌳</span> Organograma
         </h1>
-        <p className="text-sm text-gray-500 mt-1 font-mono">LIVING_HIERARCHY // CLICK AN AGENT FOR DEEP VIEW</p>
+        <p className="text-sm text-gray-500 mt-1 font-mono">HIERARQUIA_VIVA // CLIQUE EM UM AGENTE PARA VISÃO PROFUNDA</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -85,8 +85,8 @@ export default function OrgChartPage() {
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 space-y-2">
                 <span className="text-4xl block">👈</span>
-                <p className="text-xs text-gray-500">Select an agent for deep profile</p>
-                <p className="text-[10px] text-gray-700 font-mono">Radar Chart • KPIs • Lifecycle</p>
+                <p className="text-xs text-gray-500">Selecione um agente para perfil profundo</p>
+                <p className="text-[10px] text-gray-700 font-mono">Radar de Stats • KPIs • Ciclo de Vida</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -112,7 +112,7 @@ function OrgNodeCard({ agent, isRoot, selected, onClick }: { agent: any; isRoot?
       <h3 className={`${isRoot ? "text-base" : "text-sm"} font-bold text-white mt-2`}>{agent.name}</h3>
       <p className="text-[10px] text-gray-500">{agent.department}</p>
       <div className="flex items-center justify-center gap-2 mt-2 text-[10px] font-mono">
-        <span className="text-accent-purple">Lv.{lvl.level}</span>
+        <span className="text-accent-purple">Nv.{lvl.level}</span>
         <span className="text-gray-600">•</span>
         <span className="text-accent-blue">{agent.xp} XP</span>
       </div>
@@ -220,7 +220,7 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
   const lvl = getLevelFromXP(agent.xp);
   const color = DEPT_COLORS[agent.department] || "#6b7280";
   const isActive = agent.status === "active" || agent.status === "working";
-  const statusLabel = agent.status === "active" ? "Active" : agent.status === "working" ? "Working" : agent.status === "error" ? "Error" : agent.status === "sleeping" ? "Sleeping" : "Idle";
+  const statusLabel = agent.status === "active" ? "Ativo" : agent.status === "working" ? "Trabalhando" : agent.status === "error" ? "Erro" : agent.status === "sleeping" ? "Dormindo" : "Ocioso";
   const avgStat = Math.round(Object.values(agent.stats).reduce((s, v) => s + v, 0) / 5);
   const perfTier = avgStat >= 85 ? "S" : avgStat >= 70 ? "A" : avgStat >= 55 ? "B" : avgStat >= 40 ? "C" : "D";
   const tierColor = perfTier === "S" ? "#f59e0b" : perfTier === "A" ? "#10b981" : perfTier === "B" ? "#3b82f6" : perfTier === "C" ? "#f97316" : "#ef4444";
@@ -237,7 +237,7 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
         <p className="text-[11px] font-mono" style={{ color }}>{agent.department}</p>
         <div className="flex items-center justify-center gap-2 mt-1">
           <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold" style={{ color: isActive ? "#10b981" : "#6b7280", background: isActive ? "#10b98115" : "#6b728015" }}>● {statusLabel}</span>
-          <span className="text-purple-400 text-[9px] font-mono">Lv.{lvl.level} {lvl.title}</span>
+          <span className="text-purple-400 text-[9px] font-mono">Nv.{lvl.level} {lvl.title}</span>
           <span className="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono" style={{ color: tierColor, background: `${tierColor}15` }}>TIER {perfTier}</span>
         </div>
       </div>
@@ -255,19 +255,19 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
 
       {/* Radar Chart */}
       <div>
-        <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1 text-center">Performance Radar</h4>
+        <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1 text-center">Radar de Performance</h4>
         <RadarChart stats={agent.stats} color={color} />
       </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Tasks Done", value: agent.tasks_completed, c: "text-green-400", icon: "✅" },
-          { label: "Streak", value: `${agent.streak_days}d`, c: "text-amber-400", icon: "🔥" },
+          { label: "Tarefas", value: agent.tasks_completed, c: "text-green-400", icon: "✅" },
+          { label: "Sequência", value: `${agent.streak_days}d`, c: "text-amber-400", icon: "🔥" },
           { label: "Tokens", value: `${(agent.tokens_today / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
-          { label: "Blocked", value: agent.tasks_blocked, c: "text-red-400", icon: "🚫" },
-          { label: "Avg Stat", value: avgStat, c: "text-purple-400", icon: "📊" },
-          { label: "Pending", value: agent.tasks_pending, c: "text-yellow-400", icon: "⏳" },
+          { label: "Bloqueado", value: agent.tasks_blocked, c: "text-red-400", icon: "🚫" },
+          { label: "Média Stats", value: avgStat, c: "text-purple-400", icon: "📊" },
+          { label: "Pendente", value: agent.tasks_pending, c: "text-yellow-400", icon: "⏳" },
         ].map(k => (
           <div key={k.label} className="p-2.5 rounded-lg bg-ocean-900/50 text-center">
             <div className="text-sm mb-0.5">{k.icon}</div>
@@ -280,7 +280,7 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
       {/* Achievements */}
       {agent.achievements.length > 0 && (
         <div>
-          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Achievements ({agent.achievements.length})</h4>
+          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas ({agent.achievements.length})</h4>
           <div className="grid grid-cols-4 gap-1.5">
             {agent.achievements.map(a => (
               <div key={a.id} title={`${a.name}: ${a.description}`}
@@ -297,27 +297,27 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
       {/* Current Task */}
       {agent.current_task && (
         <div className="border-t border-glass-border pt-2">
-          <h4 className="text-[8px] uppercase text-gray-600 font-mono mb-0.5">Current Task</h4>
+          <h4 className="text-[8px] uppercase text-gray-600 font-mono mb-0.5">Tarefa Atual</h4>
           <p className="text-[10px] text-gray-300 font-mono">{agent.current_task}</p>
         </div>
       )}
 
       {/* Lifecycle Actions */}
       <div className="border-t border-glass-border pt-3 space-y-2">
-        <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Lifecycle Actions</h4>
+        <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Ações do Ciclo de Vida</h4>
         <div className="grid grid-cols-3 gap-1.5">
           <button className="py-2 rounded-lg text-[9px] font-mono font-bold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition border border-green-500/15">
-            ⬆ Promote
+            ⬆ Promover
           </button>
           <button className="py-2 rounded-lg text-[9px] font-mono font-bold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition border border-blue-500/15">
-            📋 Review
+            📋 Revisar
           </button>
           <button className="py-2 rounded-lg text-[9px] font-mono font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition border border-red-500/15">
-            ⛔ Dismiss
+            ⛔ Demitir
           </button>
         </div>
         <p className="text-[8px] text-gray-700 font-mono text-center">
-          Tier {perfTier} • {avgStat >= 70 ? "Eligible for promotion" : avgStat >= 40 ? "Under observation" : "At risk of dismissal"}
+          Tier {perfTier} • {avgStat >= 70 ? "Elegível para promoção" : avgStat >= 40 ? "Sob observação" : "Risco de demissão"}
         </p>
       </div>
     </motion.div>

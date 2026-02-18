@@ -9,6 +9,7 @@ import type {
   SpawnConfig, InteractionEvent, StandupMessage, Metrics, CronJob, TaskItem, TaskStatus
 } from "./types";
 import { AGENT_DEFAULTS } from "./types";
+import { supabase } from "./supabase";
 
 // ━━━ Mock Data Generators ━━━
 // These functions produce realistic sample data for development.
@@ -173,7 +174,7 @@ interface DashboardStore {
   /** Moves a task to a new column — called on drag-and-drop in the Kanban */
   moveTask: (taskId: string, newStatus: TaskStatus) => void;
   /** Hydrates the store with mock data — called once from StoreInitializer on mount */
-  initialize: () => void;
+  initialize: () => Promise<void>;
 }
 
 export const useDashboardStore = create<DashboardStore>((set) => ({
@@ -190,27 +191,39 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
   moveTask: (taskId, newStatus) => set((s) => ({
     tasks: s.tasks.map(t => t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t),
   })),
-  initialize: () => {
-    const agents = AGENT_DEFAULTS.map(a => ({
-      ...a,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })) as AgentRecord[];
+  initialize: async () => {
+    // Try Supabase first, fall back to mock data
+    let agents: AgentRecord[];
+    try {
+      const { data, error } = await supabase
+        .from("agent_status")
+        .select("*")
+        .order("name");
+      if (!error && data && data.length > 0) {
+        agents = data as AgentRecord[];
+      } else {
+        const now = new Date().toISOString();
+        agents = AGENT_DEFAULTS.map(a => ({ ...a, created_at: now, updated_at: now })) as AgentRecord[];
+      }
+    } catch {
+      const now = new Date().toISOString();
+      agents = AGENT_DEFAULTS.map(a => ({ ...a, created_at: now, updated_at: now })) as AgentRecord[];
+    }
 
     const standupMessages: StandupMessage[] = [
-      { agent_id: "shanks", agent_name: "Shanks", agent_emoji: "🏴‍☠️", message: "Morning crew! All systems running at full capacity. Dashboard sprint is on track.", timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { agent_id: "zoro", agent_name: "Zoro", agent_emoji: "⚔️", message: "Finished monitoring components. Starting on memory graph visualization next.", timestamp: new Date(Date.now() - 2400000).toISOString() },
-      { agent_id: "nami", agent_name: "Nami", agent_emoji: "💰", message: "Token costs are 12% under budget today. GLM-5 cache hit rate improved to 68%.", timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { agent_id: "chopper", agent_name: "Chopper", agent_emoji: "🩺", message: "Analyzed latency patterns — P95 dropped to 1.2s after caching optimization.", timestamp: new Date(Date.now() - 900000).toISOString() },
-      { agent_id: "franky", agent_name: "Franky", agent_emoji: "🤖", message: "SUUUPER! Architecture docs updated. Spawn system schema is ready for review.", timestamp: new Date(Date.now() - 300000).toISOString() },
+      { agent_id: "shanks", agent_name: "Shanks", agent_emoji: "🏴‍☠️", message: "Bom dia, tripulação! Todos os sistemas operando a plena capacidade.", timestamp: new Date(Date.now() - 3600000).toISOString() },
+      { agent_id: "zoro", agent_name: "Zoro", agent_emoji: "⚔️", message: "Finalizei os componentes de monitoramento. Partindo para o grafo de memória.", timestamp: new Date(Date.now() - 2400000).toISOString() },
+      { agent_id: "nami", agent_name: "Nami", agent_emoji: "💰", message: "Custos de token 12% abaixo do orçamento. Taxa de cache do GLM-5 subiu para 68%.", timestamp: new Date(Date.now() - 1800000).toISOString() },
+      { agent_id: "chopper", agent_name: "Chopper", agent_emoji: "🩺", message: "Analisei padrões de latência — P95 caiu para 1.2s após otimização de cache.", timestamp: new Date(Date.now() - 900000).toISOString() },
+      { agent_id: "franky", agent_name: "Franky", agent_emoji: "🤖", message: "SUUUPER! Documentação de arquitetura atualizada. Schema do spawn pronto para revisão.", timestamp: new Date(Date.now() - 300000).toISOString() },
     ];
 
     const interactions: InteractionEvent[] = [
-      { id: "int-1", from_agent: "shanks", to_agent: "zoro", type: "delegation", content: "Build the monitoring dashboard components", timestamp: new Date(Date.now() - 7200000).toISOString() },
-      { id: "int-2", from_agent: "zoro", to_agent: "franky", type: "collaboration", content: "Need architecture review for component structure", timestamp: new Date(Date.now() - 5400000).toISOString() },
-      { id: "int-3", from_agent: "nami", to_agent: "chopper", type: "collaboration", content: "Cross-reference token costs with latency patterns", timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { id: "int-4", from_agent: "chopper", to_agent: "shanks", type: "escalation", content: "Error rate spike detected in last hour", timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { id: "int-5", from_agent: "franky", to_agent: "jinbe", type: "delegation", content: "Deploy staging environment for review", timestamp: new Date(Date.now() - 600000).toISOString() },
+      { id: "int-1", from_agent: "shanks", to_agent: "zoro", type: "delegation", content: "Construir componentes do dashboard de monitoramento", timestamp: new Date(Date.now() - 7200000).toISOString() },
+      { id: "int-2", from_agent: "zoro", to_agent: "franky", type: "collaboration", content: "Preciso de revisão da arquitetura dos componentes", timestamp: new Date(Date.now() - 5400000).toISOString() },
+      { id: "int-3", from_agent: "nami", to_agent: "chopper", type: "collaboration", content: "Cruzar custos de tokens com padrões de latência", timestamp: new Date(Date.now() - 3600000).toISOString() },
+      { id: "int-4", from_agent: "chopper", to_agent: "shanks", type: "escalation", content: "Pico na taxa de erros detectado na última hora", timestamp: new Date(Date.now() - 1800000).toISOString() },
+      { id: "int-5", from_agent: "franky", to_agent: "jinbe", type: "delegation", content: "Deploy do ambiente de staging para revisão", timestamp: new Date(Date.now() - 600000).toISOString() },
     ];
 
     set({

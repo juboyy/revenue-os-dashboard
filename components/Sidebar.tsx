@@ -6,15 +6,15 @@ import { useDashboardStore } from "../lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
-  { label: "Command Center", href: "/", icon: "🎯" },
-  { label: "Virtual Office", href: "/world", icon: "🏢" },
-  { label: "Org Chart", href: "/orgchart", icon: "🌳" },
-  { label: "Tasks", href: "/tasks", icon: "📋" },
-  { label: "Monitoring", href: "/monitoring", icon: "📊" },
-  { label: "Memory", href: "/memory", icon: "🧠" },
+  { label: "Central de Comando", href: "/", icon: "🎯" },
+  { label: "Escritório Virtual", href: "/world", icon: "🏢" },
+  { label: "Organograma", href: "/orgchart", icon: "🌳" },
+  { label: "Tarefas", href: "/tasks", icon: "📋" },
+  { label: "Monitoramento", href: "/monitoring", icon: "📊" },
+  { label: "Memória", href: "/memory", icon: "🧠" },
   { label: "Spawn", href: "/spawn", icon: "⚡" },
-  { label: "Leaderboard", href: "/leaderboard", icon: "🏆" },
-  { label: "Interactions", href: "/interactions", icon: "💬" },
+  { label: "Ranking", href: "/leaderboard", icon: "🏆" },
+  { label: "Interações", href: "/interactions", icon: "💬" },
 ];
 
 export default function Sidebar() {
@@ -101,7 +101,7 @@ export default function Sidebar() {
                 className="text-[11px] font-mono"
               >
                 <span className="text-accent-green">{activeCount}</span>
-                <span className="text-gray-500"> / {agents.length} agents online</span>
+                <span className="text-gray-500"> / {agents.length} agentes online</span>
               </motion.div>
             )}
           </AnimatePresence>
