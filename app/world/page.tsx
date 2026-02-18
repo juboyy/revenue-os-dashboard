@@ -333,8 +333,107 @@ function drawFurniture(ctx: CanvasRenderingContext2D, room: RoomDef, frame: numb
 }
 
 // ══════════════════════════════════════════════════════════
-// CHARACTER DRAWING — Gather-style chibi pixel art
+// OUTDOOR DECORATIONS — trees, bushes, paths, fences
 // ══════════════════════════════════════════════════════════
+function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, frame: number) {
+  const s = size;
+  const sway = Math.sin(frame * 0.02 + x * 0.1) * 1.5;
+  // Trunk
+  ctx.fillStyle = "#6b4a2a";
+  ctx.fillRect(x - 3 * s, y, 6 * s, 16 * s);
+  ctx.fillStyle = "#7d5c38";
+  ctx.fillRect(x - 2 * s, y + 1, 4 * s, 2 * s);
+  // Canopy layers
+  ctx.fillStyle = "#3a7d2e";
+  ctx.beginPath(); ctx.arc(x + sway, y - 6 * s, 12 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#4a9a3e";
+  ctx.beginPath(); ctx.arc(x - 4 * s + sway * 0.7, y - 2 * s, 8 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 5 * s + sway * 0.5, y - 3 * s, 7 * s, 0, Math.PI * 2); ctx.fill();
+  // Highlight
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.beginPath(); ctx.arc(x - 2 + sway, y - 8 * s, 6 * s, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBush(ctx: CanvasRenderingContext2D, x: number, y: number, frame: number) {
+  const sway = Math.sin(frame * 0.025 + y * 0.1) * 1;
+  ctx.fillStyle = "#4a8c3f";
+  ctx.beginPath(); ctx.arc(x + sway, y, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#5ba84e";
+  ctx.beginPath(); ctx.arc(x - 4 + sway, y + 2, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 5 + sway, y + 1, 6, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawFlower(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, frame: number) {
+  const sway = Math.sin(frame * 0.04 + x) * 1;
+  ctx.fillStyle = "#4a8c3f";
+  ctx.fillRect(x, y + 3, 2, 6);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x + 1 + sway, y + 2, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(x + 1 + sway, y + 1, 1.5, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawPath(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, width: number) {
+  ctx.fillStyle = "#c4b89a";
+  if (x1 === x2) {
+    // Vertical path
+    ctx.fillRect(x1 - width / 2, Math.min(y1, y2), width, Math.abs(y2 - y1));
+  } else {
+    // Horizontal path
+    ctx.fillRect(Math.min(x1, x2), y1 - width / 2, Math.abs(x2 - x1), width);
+  }
+  // Path edges
+  ctx.fillStyle = "rgba(0,0,0,0.06)";
+  if (x1 === x2) {
+    ctx.fillRect(x1 - width / 2, Math.min(y1, y2), 2, Math.abs(y2 - y1));
+    ctx.fillRect(x1 + width / 2 - 2, Math.min(y1, y2), 2, Math.abs(y2 - y1));
+  } else {
+    ctx.fillRect(Math.min(x1, x2), y1 - width / 2, Math.abs(x2 - x1), 2);
+    ctx.fillRect(Math.min(x1, x2), y1 + width / 2 - 2, Math.abs(x2 - x1), 2);
+  }
+}
+
+function drawOutdoorDecorations(ctx: CanvasRenderingContext2D, frame: number) {
+  // Trees along edges
+  const treePositions = [
+    [16, 16], [80, 20], [420, 12], [560, 18], [750, 14], [900, 20], [1050, 16], [1200, 18],
+    [10, 280], [10, 480], [10, 700], [1310, 100], [1310, 350], [1310, 550], [1310, 750],
+    [200, 920], [500, 930], [800, 920], [1100, 930],
+  ];
+  for (const [tx, ty] of treePositions) {
+    drawTree(ctx, tx, ty, 1 + Math.sin(tx * 0.01) * 0.3, frame);
+  }
+
+  // Bushes scattered
+  const bushPositions = [
+    [50, 50], [150, 30], [300, 45], [650, 35], [850, 45], [1100, 35], [1250, 50],
+    [50, 900], [350, 910], [650, 900], [950, 910], [1250, 900],
+    [30, 150], [30, 400], [30, 600], [1300, 200], [1300, 470], [1300, 680],
+  ];
+  for (const [bx, by] of bushPositions) {
+    drawBush(ctx, bx, by, frame);
+  }
+
+  // Flowers
+  const flowerColors = ["#e74c3c", "#f1c40f", "#e67e22", "#9b59b6", "#3498db", "#e91e63"];
+  for (let i = 0; i < 30; i++) {
+    const fx = 40 + (i * 47) % 1280;
+    const fy = i < 15 ? 35 + (i * 7) % 25 : 905 + (i * 5) % 20;
+    drawFlower(ctx, fx, fy, flowerColors[i % flowerColors.length], frame);
+  }
+
+  // Paths connecting rooms (sandy walkways)
+  drawPath(ctx, 9 * T + T / 2, 4 * T, 11 * T, 4 * T, 14);
+  drawPath(ctx, 20 * T, 7 * T + T / 2, 20 * T, 9 * T, 14);
+  drawPath(ctx, 31 * T, 7 * T + T / 2, 31 * T, 9 * T, 14);
+  drawPath(ctx, 9 * T + T / 2, 14 * T, 11 * T, 14 * T, 14);
+  drawPath(ctx, 20 * T, 16 * T, 20 * T, 18 * T, 14);
+}
+
+// ══════════════════════════════════════════════════════════
+// CHARACTER DRAWING — Gather-style chibi pixel art (1.6x scale)
+// ══════════════════════════════════════════════════════════
+const SPRITE_SCALE = 1.6;
 
 function drawCharacter(
   ctx: CanvasRenderingContext2D, px: number, py: number,
@@ -343,24 +442,29 @@ function drawCharacter(
   name: string, emoji: string, statusLabel: string,
   isMoving: boolean, interactionIcon: string | null,
 ) {
+  // Scale up the sprite
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
+  // Draw at origin (0,0) — all coordinates relative
   const bounce = isMoving ? Math.sin(frame * 0.25) * 2.5 : Math.sin(frame * 0.05) * 0.5;
-  const by = py + bounce;
+  const by = bounce;
   const walkPhase = Math.sin(frame * 0.3);
 
   // ── Shadow ──
   ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.beginPath();
-  ctx.ellipse(px, py + 24, 14, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 24, 14, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // ── Selection ring ──
   if (isSelected || isHovered) {
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(px, py + 24, 18, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 24, 18, 7, 0, 0, Math.PI * 2);
     ctx.strokeStyle = isSelected ? "#3b82f6" : "rgba(100,100,200,0.5)";
-    ctx.lineWidth = isSelected ? 2.5 : 1.5;
-    if (isSelected) { ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 10; }
+    ctx.lineWidth = isSelected ? 2 : 1;
+    if (isSelected) { ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 8; }
     ctx.stroke();
     ctx.restore();
   }
@@ -368,47 +472,47 @@ function drawCharacter(
   // ── Feet / Shoes ──
   ctx.fillStyle = "#2c2c3a";
   if (isMoving) {
-    ctx.fillRect(px - 7 + walkPhase * 2, by + 18, 6, 4);
-    ctx.fillRect(px + 1 - walkPhase * 2, by + 18, 6, 4);
+    ctx.fillRect(-7 + walkPhase * 2, by + 18, 6, 4);
+    ctx.fillRect(1 - walkPhase * 2, by + 18, 6, 4);
   } else {
-    ctx.fillRect(px - 7, by + 18, 6, 4);
-    ctx.fillRect(px + 1, by + 18, 6, 4);
+    ctx.fillRect(-7, by + 18, 6, 4);
+    ctx.fillRect(1, by + 18, 6, 4);
   }
 
   // ── Legs ──
   ctx.fillStyle = vis.pants;
   if (isMoving) {
-    ctx.fillRect(px - 6 + walkPhase * 1.5, by + 10, 5, 9);
-    ctx.fillRect(px + 1 - walkPhase * 1.5, by + 10, 5, 9);
+    ctx.fillRect(-6 + walkPhase * 1.5, by + 10, 5, 9);
+    ctx.fillRect(1 - walkPhase * 1.5, by + 10, 5, 9);
   } else {
-    ctx.fillRect(px - 6, by + 10, 5, 9);
-    ctx.fillRect(px + 1, by + 10, 5, 9);
+    ctx.fillRect(-6, by + 10, 5, 9);
+    ctx.fillRect(1, by + 10, 5, 9);
   }
 
   // ── Body / Torso ──
   ctx.fillStyle = vis.shirt;
-  ctx.fillRect(px - 10, by - 4, 20, 16);
+  ctx.fillRect(-10, by - 4, 20, 16);
   // Shirt highlights
   ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(px - 8, by - 3, 6, 2);
+  ctx.fillRect(-8, by - 3, 6, 2);
   // Collar/neckline
   ctx.fillStyle = "rgba(255,255,255,0.15)";
-  ctx.fillRect(px - 3, by - 4, 6, 3);
+  ctx.fillRect(-3, by - 4, 6, 3);
 
   // ── Arms ──
   ctx.fillStyle = vis.shirt;
   const armSwing = isMoving ? walkPhase * 3 : 0;
-  ctx.fillRect(px - 14, by - 2 + armSwing, 5, 14);
-  ctx.fillRect(px + 9, by - 2 - armSwing, 5, 14);
+  ctx.fillRect(-14, by - 2 + armSwing, 5, 14);
+  ctx.fillRect(9, by - 2 - armSwing, 5, 14);
   // Hands (skin)
   ctx.fillStyle = vis.skin;
-  ctx.fillRect(px - 14, by + 10 + armSwing, 5, 4);
-  ctx.fillRect(px + 9, by + 10 - armSwing, 5, 4);
+  ctx.fillRect(-14, by + 10 + armSwing, 5, 4);
+  ctx.fillRect(9, by + 10 - armSwing, 5, 4);
 
   // ── Head (large, chibi-proportioned) ──
   ctx.fillStyle = vis.skin;
   ctx.beginPath();
-  ctx.roundRect(px - 10, by - 24, 20, 22, 4);
+  ctx.roundRect(-10, by - 24, 20, 22, 4);
   ctx.fill();
 
   // ── Eyes ──
@@ -416,80 +520,77 @@ function drawCharacter(
   if (!blink) {
     // Large anime-style eyes
     ctx.fillStyle = "#1a1a2e";
-    ctx.fillRect(px - 6, by - 18, 5, 6);
-    ctx.fillRect(px + 1, by - 18, 5, 6);
+    ctx.fillRect(-6, by - 18, 5, 6);
+    ctx.fillRect(1, by - 18, 5, 6);
     // White/shiny highlight
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(px - 5, by - 17, 2, 2);
-    ctx.fillRect(px + 2, by - 17, 2, 2);
+    ctx.fillRect(-5, by - 17, 2, 2);
+    ctx.fillRect(2, by - 17, 2, 2);
     // Iris color dots
     ctx.fillStyle = vis.hair;
     ctx.globalAlpha = 0.3;
-    ctx.fillRect(px - 4, by - 15, 2, 2);
-    ctx.fillRect(px + 3, by - 15, 2, 2);
+    ctx.fillRect(-4, by - 15, 2, 2);
+    ctx.fillRect(3, by - 15, 2, 2);
     ctx.globalAlpha = 1;
   } else {
     ctx.fillStyle = "#1a1a2e";
-    ctx.fillRect(px - 6, by - 15, 5, 1);
-    ctx.fillRect(px + 1, by - 15, 5, 1);
+    ctx.fillRect(-6, by - 15, 5, 1);
+    ctx.fillRect(1, by - 15, 5, 1);
   }
 
   // ── Mouth ──
   ctx.fillStyle = "#c0665a";
-  ctx.fillRect(px - 2, by - 8, 4, 2);
+  ctx.fillRect(-2, by - 8, 4, 2);
 
   // ── Hair (various styles, Gather-like) ──
   ctx.fillStyle = vis.hair;
   switch (vis.hairStyle) {
     case "short":
-      ctx.fillRect(px - 11, by - 27, 22, 7);
-      ctx.fillRect(px - 11, by - 24, 3, 8);
-      ctx.fillRect(px + 8, by - 24, 3, 6);
+      ctx.fillRect(-11, by - 27, 22, 7);
+      ctx.fillRect(-11, by - 24, 3, 8);
+      ctx.fillRect(8, by - 24, 3, 6);
       break;
     case "spiky":
-      ctx.fillRect(px - 11, by - 28, 22, 7);
-      ctx.fillRect(px - 8, by - 34, 5, 8);
-      ctx.fillRect(px - 1, by - 36, 5, 10);
-      ctx.fillRect(px + 5, by - 33, 5, 7);
+      ctx.fillRect(-11, by - 28, 22, 7);
+      ctx.fillRect(-8, by - 34, 5, 8);
+      ctx.fillRect(-1, by - 36, 5, 10);
+      ctx.fillRect(5, by - 33, 5, 7);
       break;
     case "long":
-      ctx.fillRect(px - 12, by - 27, 24, 7);
-      ctx.fillRect(px - 12, by - 24, 4, 22);
-      ctx.fillRect(px + 8, by - 24, 4, 22);
-      // Bangs
-      ctx.fillRect(px - 8, by - 22, 4, 4);
-      ctx.fillRect(px + 4, by - 22, 4, 4);
+      ctx.fillRect(-12, by - 27, 24, 7);
+      ctx.fillRect(-12, by - 24, 4, 22);
+      ctx.fillRect(8, by - 24, 4, 22);
+      ctx.fillRect(-8, by - 22, 4, 4);
+      ctx.fillRect(4, by - 22, 4, 4);
       break;
     case "bald":
       ctx.fillStyle = vis.skin;
-      ctx.fillRect(px - 10, by - 26, 20, 3);
-      // Shine
+      ctx.fillRect(-10, by - 26, 20, 3);
       ctx.fillStyle = "rgba(255,255,255,0.2)";
-      ctx.fillRect(px - 4, by - 26, 6, 2);
+      ctx.fillRect(-4, by - 26, 6, 2);
       break;
     case "ponytail":
-      ctx.fillRect(px - 11, by - 27, 22, 7);
-      ctx.fillRect(px + 8, by - 24, 4, 8);
-      ctx.fillRect(px + 11, by - 18, 5, 3);
-      ctx.fillRect(px + 14, by - 16, 4, 14);
-      // Ribbon
+      ctx.fillRect(-11, by - 27, 22, 7);
+      ctx.fillRect(8, by - 24, 4, 8);
+      ctx.fillRect(11, by - 18, 5, 3);
+      ctx.fillRect(14, by - 16, 4, 14);
       ctx.fillStyle = "#e74c3c";
-      ctx.fillRect(px + 12, by - 17, 6, 3);
+      ctx.fillRect(12, by - 17, 6, 3);
       break;
     case "afro":
       ctx.beginPath();
-      ctx.arc(px, by - 22, 16, 0, Math.PI * 2);
+      ctx.arc(0, by - 22, 16, 0, Math.PI * 2);
       ctx.fill();
       break;
     case "mohawk":
-      ctx.fillRect(px - 11, by - 27, 22, 6);
-      ctx.fillRect(px - 3, by - 38, 6, 14);
-      ctx.fillRect(px - 1, by - 40, 2, 4);
+      ctx.fillRect(-11, by - 27, 22, 6);
+      ctx.fillRect(-3, by - 38, 6, 14);
+      ctx.fillRect(-1, by - 40, 2, 4);
       break;
     case "bowl":
-      ctx.fillRect(px - 12, by - 27, 24, 9);
-      ctx.fillRect(px - 12, by - 20, 4, 6);
-      ctx.fillRect(px + 8, by - 20, 4, 6);
+      ctx.fillRect(-12, by - 27, 24, 9);
+      ctx.fillRect(-12, by - 20, 4, 6);
+      ctx.fillRect(8, by - 20, 4, 6);
       break;
   }
 
@@ -497,96 +598,102 @@ function drawCharacter(
   switch (vis.accessory) {
     case "glasses":
       ctx.strokeStyle = "rgba(180,200,220,0.8)"; ctx.lineWidth = 1.5;
-      ctx.strokeRect(px - 7, by - 19, 6, 6);
-      ctx.strokeRect(px + 1, by - 19, 6, 6);
-      ctx.beginPath(); ctx.moveTo(px - 1, by - 16); ctx.lineTo(px + 1, by - 16); ctx.stroke();
+      ctx.strokeRect(-7, by - 19, 6, 6);
+      ctx.strokeRect(1, by - 19, 6, 6);
+      ctx.beginPath(); ctx.moveTo(-1, by - 16); ctx.lineTo(1, by - 16); ctx.stroke();
       break;
     case "headphones":
       ctx.strokeStyle = "#444"; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(px, by - 26, 14, Math.PI, 0); ctx.stroke();
-      ctx.fillStyle = "#333"; ctx.fillRect(px - 15, by - 22, 6, 10); ctx.fillRect(px + 9, by - 22, 6, 10);
-      ctx.fillStyle = "#555"; ctx.fillRect(px - 14, by - 20, 4, 6); ctx.fillRect(px + 10, by - 20, 4, 6);
+      ctx.beginPath(); ctx.arc(0, by - 26, 14, Math.PI, 0); ctx.stroke();
+      ctx.fillStyle = "#333"; ctx.fillRect(-15, by - 22, 6, 10); ctx.fillRect(9, by - 22, 6, 10);
+      ctx.fillStyle = "#555"; ctx.fillRect(-14, by - 20, 4, 6); ctx.fillRect(10, by - 20, 4, 6);
       break;
     case "hat":
       ctx.fillStyle = vis.shirt;
-      ctx.fillRect(px - 14, by - 30, 28, 5);
-      ctx.fillRect(px - 8, by - 36, 16, 8);
+      ctx.fillRect(-14, by - 30, 28, 5);
+      ctx.fillRect(-8, by - 36, 16, 8);
       ctx.fillStyle = "rgba(255,255,255,0.15)";
-      ctx.fillRect(px - 6, by - 34, 12, 2);
+      ctx.fillRect(-6, by - 34, 12, 2);
       break;
     case "helm":
       ctx.fillStyle = "#7a7a8a";
-      ctx.fillRect(px - 12, by - 29, 24, 7);
-      ctx.fillRect(px - 5, by - 34, 10, 7);
+      ctx.fillRect(-12, by - 29, 24, 7);
+      ctx.fillRect(-5, by - 34, 10, 7);
       ctx.fillStyle = "#8a8a9a";
-      ctx.fillRect(px - 10, by - 28, 20, 2);
+      ctx.fillRect(-10, by - 28, 20, 2);
       break;
     case "scarf":
       ctx.fillStyle = "#e74c3c";
-      ctx.fillRect(px - 10, by - 4, 20, 5);
-      ctx.fillRect(px - 14, by - 2, 6, 14);
+      ctx.fillRect(-10, by - 4, 20, 5);
+      ctx.fillRect(-14, by - 2, 6, 14);
       ctx.fillStyle = "#c0392b";
-      ctx.fillRect(px - 13, by + 4, 4, 2);
+      ctx.fillRect(-13, by + 4, 4, 2);
       break;
     case "tie":
       ctx.fillStyle = "#c0392b";
-      ctx.fillRect(px - 2, by - 1, 4, 12);
-      ctx.beginPath(); ctx.moveTo(px - 3, by + 11); ctx.lineTo(px, by + 16); ctx.lineTo(px + 3, by + 11); ctx.fill();
+      ctx.fillRect(-2, by - 1, 4, 12);
+      ctx.beginPath(); ctx.moveTo(-3, by + 11); ctx.lineTo(0, by + 16); ctx.lineTo(3, by + 11); ctx.fill();
       break;
     case "badge":
       ctx.fillStyle = "#f59e0b";
-      ctx.beginPath(); ctx.arc(px + 8, by, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(8, by, 4, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.font = "bold 5px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("★", px + 8, by + 2);
+      ctx.fillText("★", 8, by + 2);
       break;
   }
 
   // ── Emoji above head ──
   ctx.font = "14px serif";
   ctx.textAlign = "center";
-  ctx.fillText(emoji, px, by - 40);
-
-  // ── Name tag — Gather-style floating pill ──
-  ctx.font = "bold 10px 'Segoe UI', sans-serif";
-  const nameW = ctx.measureText(name).width + 16;
-  const nx = px - nameW / 2;
-  const ny = py + 26;
-  // Pill shape
-  ctx.fillStyle = isSelected ? "rgba(59,130,246,0.9)" : "rgba(255,255,255,0.92)";
-  ctx.beginPath();
-  ctx.roundRect(nx, ny, nameW, 16, 8);
-  ctx.fill();
-  // Status dot inside pill
-  ctx.beginPath();
-  ctx.arc(nx + 7, ny + 8, 3.5, 0, Math.PI * 2);
-  ctx.fillStyle = statusColor;
-  ctx.fill();
-  // Name text
-  ctx.fillStyle = isSelected ? "#ffffff" : "#2c2c3a";
-  ctx.textAlign = "center";
-  ctx.fillText(name, px + 2, ny + 12);
+  ctx.fillText(emoji, 0, by - 40);
 
   // ── Interaction bubble ──
   if (interactionIcon) {
     ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.beginPath();
-    ctx.roundRect(px - 16, by - 60, 32, 22, 8);
+    ctx.roundRect(-16, by - 60, 32, 22, 8);
     ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,0.1)";
     ctx.lineWidth = 1;
     ctx.stroke();
-    // Tail
     ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.beginPath();
-    ctx.moveTo(px - 4, by - 38); ctx.lineTo(px, by - 33); ctx.lineTo(px + 4, by - 38);
+    ctx.moveTo(-4, by - 38); ctx.lineTo(0, by - 33); ctx.lineTo(4, by - 38);
     ctx.fill();
     ctx.font = "14px serif";
     ctx.fillStyle = "#1e293b";
     ctx.textAlign = "center";
-    ctx.fillText(interactionIcon, px, by - 44);
+    ctx.fillText(interactionIcon, 0, by - 44);
   }
+
+  // Restore transform before drawing name tag (draw in world-space at full size)
+  ctx.restore();
+
+  // ── Name tag — drawn in world space (not scaled) for crisp text ──
+  ctx.font = "bold 11px 'Segoe UI', sans-serif";
+  const nameW = ctx.measureText(name).width + 20;
+  const nx = px - nameW / 2;
+  const ny = py + 26 * SPRITE_SCALE;
+  // Pill shape
+  ctx.fillStyle = isSelected ? "rgba(59,130,246,0.92)" : "rgba(255,255,255,0.94)";
+  ctx.beginPath();
+  ctx.roundRect(nx, ny, nameW, 18, 9);
+  ctx.fill();
+  // Shadow on pill
+  ctx.strokeStyle = "rgba(0,0,0,0.08)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Status dot inside pill
+  ctx.beginPath();
+  ctx.arc(nx + 9, ny + 9, 4, 0, Math.PI * 2);
+  ctx.fillStyle = statusColor;
+  ctx.fill();
+  // Name text
+  ctx.fillStyle = isSelected ? "#ffffff" : "#2c2c3a";
+  ctx.textAlign = "center";
+  ctx.fillText(name, px + 3, ny + 13);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -706,6 +813,9 @@ export default function WorldPage() {
         }
       }
 
+      // Outdoor decorations (trees, bushes, flowers, paths)
+      drawOutdoorDecorations(ctx, frame);
+
       // Count agents per room
       const pos = agentPosRef.current;
       const roomCounts: Record<string, number> = {};
@@ -781,7 +891,7 @@ export default function WorldPage() {
     for (const agent of agents) {
       const p = pos[agent.id];
       if (!p) continue;
-      if (Math.abs(mx - p.x) < 18 && Math.abs(my - p.y) < 28) return agent;
+      if (Math.abs(mx - p.x) < 30 && Math.abs(my - p.y) < 45) return agent;
     }
     return null;
   }, [agents]);
@@ -832,7 +942,7 @@ export default function WorldPage() {
       <canvas ref={canvasRef} width={CW} height={CH}
         onClick={handleClick} onMouseMove={handleMove}
         className="w-full h-full pt-10"
-        style={{ imageRendering: "auto", objectFit: "contain", background: "#080c14" }} />
+        style={{ imageRendering: "auto", objectFit: "contain", background: "#7a9960" }} />
 
       {/* ═══ FLOATING AGENT INSPECTOR (right panel) ═══ */}
       <AnimatePresence>
