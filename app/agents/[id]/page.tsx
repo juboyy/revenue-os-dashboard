@@ -11,6 +11,7 @@ function StatusBadge({ status }: { status: AgentStatus }) {
     working: { bg: "bg-amber-500/20", text: "text-amber-400", label: "🟡 Working" },
     idle: { bg: "bg-gray-500/20", text: "text-gray-400", label: "⚪ Idle" },
     error: { bg: "bg-red-500/20", text: "text-red-400", label: "🔴 Error" },
+    sleeping: { bg: "bg-gray-700/20", text: "text-gray-500", label: "💤 Sleeping" },
   };
   const s = map[status];
   return (

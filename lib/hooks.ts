@@ -18,7 +18,7 @@ async function fetchAgents(): Promise<AgentRecord[]> {
       ...a,
       created_at: now,
       updated_at: now,
-    }));
+    })) as AgentRecord[];
   }
 
   return data as AgentRecord[];
@@ -55,8 +55,11 @@ export function useMetrics() {
     totalTasksPending: agents.reduce((s, a) => s + (a.tasks_pending ?? 0), 0),
     totalTasksBlocked: agents.reduce((s, a) => s + (a.tasks_blocked ?? 0), 0),
     totalTokensToday: agents.reduce((s, a) => s + (a.tokens_today ?? 0), 0),
+    totalCostToday: 0,
     activeAgents: agents.filter((a) => a.status === "active" || a.status === "working").length,
     totalAgents: agents.length,
+    errorRate: 0,
+    avgLatencyMs: 0,
   };
 
   return { metrics, isLoading };

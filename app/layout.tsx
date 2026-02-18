@@ -1,20 +1,22 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Inter } from "next/font/google";
 import "./globals.css";
+import Sidebar from "../components/Sidebar";
+import StoreInitializer from "../components/StoreInitializer";
 
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "🏴☠️ THOUSAND SUNNY // SYSTEM_V.5",
-  description: "Tactical Operations Dashboard",
+  title: "Revenue OS // Multi-Agent Command Center",
+  description: "Immersive multi-agent virtual office dashboard with real-time monitoring, memory graphs, and gamification",
   robots: "noindex, nofollow",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#030305",
+  themeColor: "#060a14",
 };
 
 export default function RootLayout({
@@ -23,12 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body className={`${jetbrains.variable} ${inter.variable} font-mono bg-void text-gray-300 antialiased overflow-hidden`}>
-        <div className="scanline-overlay pointer-events-none" />
-        <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none z-0" />
-        <div className="relative z-10 h-screen flex flex-col">
-          {children}
+    <html lang="pt-BR" className="dark">
+      <body className={`${jetbrains.variable} ${inter.variable} font-sans bg-void text-gray-300 antialiased`}>
+        <StoreInitializer />
+        <div className="fixed inset-0 bg-grid-dots pointer-events-none z-0 opacity-40" />
+        <div className="relative z-10 h-screen flex">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            {children}
+          </main>
         </div>
       </body>
     </html>
