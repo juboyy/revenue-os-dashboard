@@ -210,8 +210,8 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       };
 
       // Node meshes
-      const nodeMeshes: THREE.Mesh[] = [];
-      const nodeIdMap = new Map<THREE.Mesh, Memory>();
+      const nodeMeshes: any[] = [];
+      const nodeIdMap = new Map<any, Memory>();
 
       for (const node of memoryGraph.nodes) {
         const p = nodePositions[node.id];
@@ -284,7 +284,7 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
         raycaster.setFromCamera(mouse, camera);
         const hits = raycaster.intersectObjects(nodeMeshes);
         if (hits.length > 0) {
-          const node = nodeIdMap.get(hits[0].object as THREE.Mesh);
+          const node = nodeIdMap.get(hits[0].object as any);
           if (node) setSelectedNode(node);
         } else {
           setSelectedNode(null);
