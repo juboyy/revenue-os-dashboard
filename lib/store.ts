@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type {
   AgentRecord, MonitoringData, Memory, MemoryGraph,
-  SpawnConfig, InteractionEvent, StandupMessage, Metrics, CronJob
+  SpawnConfig, InteractionEvent, StandupMessage, Metrics, CronJob, TaskItem, TaskStatus
 } from "./types";
 import { AGENT_DEFAULTS } from "./types";
 
@@ -118,6 +118,28 @@ function generateMockMemories(): MemoryGraph {
   return { nodes, edges };
 }
 
+function generateMockTasks(): TaskItem[] {
+  const now = Date.now();
+  return [
+    { id: "t1", title: "Implement WebSocket real-time updates", description: "Add live data streaming for agent status changes", status: "in_progress", priority: "high", assignee: "zoro", created_at: new Date(now - 86400000 * 3).toISOString(), updated_at: new Date(now - 3600000).toISOString() },
+    { id: "t2", title: "Design token budget alert system", description: "Notify when daily token spend exceeds threshold", status: "backlog", priority: "medium", assignee: "nami", created_at: new Date(now - 86400000 * 2).toISOString(), updated_at: new Date(now - 86400000).toISOString() },
+    { id: "t3", title: "Integrate mem0 API for persistent memory", description: "Replace mock memory data with real mem0 cloud calls", status: "in_progress", priority: "critical", assignee: "robin", created_at: new Date(now - 86400000 * 5).toISOString(), updated_at: new Date(now - 7200000).toISOString() },
+    { id: "t4", title: "Build agent spawn wizard", description: "Step-by-step form for creating new agents with templates", status: "review", priority: "medium", assignee: "franky", created_at: new Date(now - 86400000 * 4).toISOString(), updated_at: new Date(now - 1800000).toISOString() },
+    { id: "t5", title: "Create cron job scheduler UI", description: "Visual timeline and CRUD for scheduled tasks", status: "backlog", priority: "low", assignee: null, created_at: new Date(now - 86400000).toISOString(), updated_at: new Date(now - 86400000).toISOString() },
+    { id: "t6", title: "Implement error boundary components", description: "Graceful error handling for all page routes", status: "done", priority: "high", assignee: "jinbe", created_at: new Date(now - 86400000 * 7).toISOString(), updated_at: new Date(now - 86400000 * 2).toISOString() },
+    { id: "t7", title: "Add latency heatmap to monitoring", description: "Hourly heatmap showing response time patterns", status: "backlog", priority: "medium", assignee: "chopper", created_at: new Date(now - 86400000 * 2).toISOString(), updated_at: new Date(now - 86400000 * 2).toISOString() },
+    { id: "t8", title: "Fix cache hit rate calculation", description: "Cache read tokens not properly counted in totals", status: "blocked", priority: "critical", assignee: "zoro", created_at: new Date(now - 86400000 * 6).toISOString(), updated_at: new Date(now - 86400000).toISOString() },
+    { id: "t9", title: "SEO metadata for all pages", description: "Add title, description, and Open Graph tags", status: "done", priority: "low", assignee: "sanji", created_at: new Date(now - 86400000 * 8).toISOString(), updated_at: new Date(now - 86400000 * 3).toISOString() },
+    { id: "t10", title: "Provider failover logic", description: "Automatic fallback: vercel → openai → anthropic", status: "in_progress", priority: "high", assignee: "jinbe", created_at: new Date(now - 86400000 * 4).toISOString(), updated_at: new Date(now - 3600000 * 5).toISOString() },
+    { id: "t11", title: "Pixel-art virtual office map", description: "Isometric tilemap for the office floor visualization", status: "backlog", priority: "medium", assignee: null, created_at: new Date(now - 86400000).toISOString(), updated_at: new Date(now - 86400000).toISOString() },
+    { id: "t12", title: "Agent delegation protocol", description: "Implement task routing based on specialization", status: "review", priority: "high", assignee: "shanks", created_at: new Date(now - 86400000 * 5).toISOString(), updated_at: new Date(now - 7200000).toISOString() },
+    { id: "t13", title: "Dark mode toggle", description: "Add theme switch between dark ocean and light mode", status: "backlog", priority: "low", assignee: null, created_at: new Date(now - 86400000 * 3).toISOString(), updated_at: new Date(now - 86400000 * 3).toISOString() },
+    { id: "t14", title: "Unit tests for store actions", description: "Test all Zustand store mutations and selectors", status: "in_progress", priority: "medium", assignee: "usopp", created_at: new Date(now - 86400000 * 2).toISOString(), updated_at: new Date(now - 3600000 * 2).toISOString() },
+    { id: "t15", title: "Performance optimization pass", description: "Reduce bundle size, lazy load heavy components", status: "backlog", priority: "high", assignee: null, created_at: new Date(now - 86400000).toISOString(), updated_at: new Date(now - 86400000).toISOString() },
+    { id: "t16", title: "Standup room typewriter effect", description: "Animate new messages with typing animation", status: "done", priority: "low", assignee: "sanji", created_at: new Date(now - 86400000 * 6).toISOString(), updated_at: new Date(now - 86400000 * 4).toISOString() },
+  ];
+}
+
 // ━━━ Store ━━━
 interface DashboardStore {
   // Agents
@@ -134,6 +156,9 @@ interface DashboardStore {
   // Interactions
   standupMessages: StandupMessage[];
   interactions: InteractionEvent[];
+  // Tasks
+  tasks: TaskItem[];
+  moveTask: (taskId: string, newStatus: TaskStatus) => void;
   // Init
   initialize: () => void;
 }
@@ -148,6 +173,10 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   standupMessages: [],
   interactions: [],
+  tasks: [],
+  moveTask: (taskId, newStatus) => set((s) => ({
+    tasks: s.tasks.map(t => t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t),
+  })),
   initialize: () => {
     const agents = AGENT_DEFAULTS.map(a => ({
       ...a,
@@ -177,6 +206,7 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
       memoryGraph: generateMockMemories(),
       standupMessages,
       interactions,
+      tasks: generateMockTasks(),
     });
   },
 }));

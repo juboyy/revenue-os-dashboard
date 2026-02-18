@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "Command Center", href: "/", icon: "🎯" },
   { label: "Virtual Office", href: "/world", icon: "🏢" },
   { label: "Org Chart", href: "/orgchart", icon: "🌳" },
+  { label: "Tasks", href: "/tasks", icon: "📋" },
   { label: "Monitoring", href: "/monitoring", icon: "📊" },
   { label: "Memory", href: "/memory", icon: "🧠" },
   { label: "Spawn", href: "/spawn", icon: "⚡" },

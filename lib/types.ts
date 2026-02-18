@@ -194,6 +194,36 @@ export interface OrgNode {
   children: OrgNode[];
 }
 
+// ━━━ Tasks / Kanban ━━━
+export type TaskStatus = "backlog" | "in_progress" | "review" | "done" | "blocked";
+export type TaskPriority = "low" | "medium" | "high" | "critical";
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assignee: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; icon: string }> = {
+  critical: { label: "Critical", color: "#ef4444", icon: "🔴" },
+  high: { label: "High", color: "#f59e0b", icon: "🟠" },
+  medium: { label: "Medium", color: "#3b82f6", icon: "🔵" },
+  low: { label: "Low", color: "#6b7280", icon: "⚪" },
+};
+
+export const KANBAN_COLUMNS: { id: TaskStatus; label: string; icon: string; color: string }[] = [
+  { id: "backlog", label: "Backlog", icon: "📋", color: "#6b7280" },
+  { id: "in_progress", label: "In Progress", icon: "⚡", color: "#f59e0b" },
+  { id: "review", label: "Review", icon: "🔍", color: "#8b5cf6" },
+  { id: "done", label: "Done", icon: "✅", color: "#10b981" },
+  { id: "blocked", label: "Blocked", icon: "🚫", color: "#ef4444" },
+];
+
 // ━━━ Interactions ━━━
 export interface InteractionEvent {
   id: string;
@@ -253,7 +283,11 @@ export const AGENT_DEFAULTS: Omit<AgentRecord, "created_at" | "updated_at">[] = 
     soul: "The captain who sees the whole ocean.", tokens_today: 12400,
     tasks_completed: 23, tasks_pending: 4, tasks_blocked: 0,
     model: "glm-5", provider: "vercel-ai-gateway",
-    xp: 2800, level: 5, level_title: "Master", achievements: [], streak_days: 14,
+    xp: 2800, level: 5, level_title: "Master", achievements: [
+      { id: "a1", name: "First Blood", description: "Complete first task", icon: "⚔️", earned_at: new Date(Date.now() - 86400000 * 10).toISOString(), rarity: "common" },
+      { id: "a2", name: "Token Master", description: "Use 100K tokens", icon: "🪙", earned_at: new Date(Date.now() - 86400000 * 5).toISOString(), rarity: "rare" },
+      { id: "a3", name: "Captain's Log", description: "Lead 50 delegations", icon: "📜", earned_at: new Date(Date.now() - 86400000 * 2).toISOString(), rarity: "epic" },
+    ], streak_days: 14,
     stats: { speed: 85, accuracy: 92, versatility: 95, reliability: 98, creativity: 88 },
   },
   {
@@ -263,7 +297,10 @@ export const AGENT_DEFAULTS: Omit<AgentRecord, "created_at" | "updated_at">[] = 
     soul: "Three-sword style coder.", tokens_today: 18700,
     tasks_completed: 15, tasks_pending: 3, tasks_blocked: 1,
     model: "glm-5", provider: "vercel-ai-gateway",
-    xp: 3200, level: 5, level_title: "Master", achievements: [], streak_days: 12,
+    xp: 3200, level: 5, level_title: "Master", achievements: [
+      { id: "a4", name: "Code Samurai", description: "Ship 30 components", icon: "🗡️", earned_at: new Date(Date.now() - 86400000 * 3).toISOString(), rarity: "epic" },
+      { id: "a5", name: "Night Owl", description: "10 late-night sessions", icon: "🦉", earned_at: new Date(Date.now() - 86400000 * 7).toISOString(), rarity: "rare" },
+    ], streak_days: 12,
     stats: { speed: 90, accuracy: 88, versatility: 70, reliability: 95, creativity: 75 },
   },
   {
@@ -273,7 +310,9 @@ export const AGENT_DEFAULTS: Omit<AgentRecord, "created_at" | "updated_at">[] = 
     soul: "SUUUPER architect!", tokens_today: 9300,
     tasks_completed: 8, tasks_pending: 2, tasks_blocked: 0,
     model: "glm-5", provider: "vercel-ai-gateway",
-    xp: 1800, level: 4, level_title: "Veteran", achievements: [], streak_days: 8,
+    xp: 1800, level: 4, level_title: "Veteran", achievements: [
+      { id: "a6", name: "Architect", description: "Design 5 systems", icon: "🏗️", earned_at: new Date(Date.now() - 86400000 * 4).toISOString(), rarity: "legendary" },
+    ], streak_days: 8,
     stats: { speed: 70, accuracy: 95, versatility: 85, reliability: 90, creativity: 92 },
   },
   {
@@ -293,7 +332,9 @@ export const AGENT_DEFAULTS: Omit<AgentRecord, "created_at" | "updated_at">[] = 
     soul: "Every berry counts, every token is tracked.", tokens_today: 4100,
     tasks_completed: 18, tasks_pending: 2, tasks_blocked: 0,
     model: "glm-5", provider: "vercel-ai-gateway",
-    xp: 2200, level: 4, level_title: "Veteran", achievements: [], streak_days: 15,
+    xp: 2200, level: 4, level_title: "Veteran", achievements: [
+      { id: "a9", name: "Penny Pincher", description: "Save $10 in token costs", icon: "💎", earned_at: new Date(Date.now() - 86400000 * 1).toISOString(), rarity: "rare" },
+    ], streak_days: 15,
     stats: { speed: 82, accuracy: 96, versatility: 65, reliability: 97, creativity: 70 },
   },
   {
