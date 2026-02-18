@@ -158,6 +158,7 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
     (async () => {
       const THREE = await import("three");
       const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
+      const { CSS2DRenderer, CSS2DObject } = await import("three/examples/jsm/renderers/CSS2DRenderer.js");
 
       const width = container.clientWidth;
       const height = 520;
@@ -178,6 +179,16 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       container.innerHTML = "";
       container.appendChild(renderer.domElement);
       renderer.domElement.style.borderRadius = "12px";
+
+      // CSS2D label renderer (overlays WebGL canvas)
+      const labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(width, height);
+      labelRenderer.domElement.style.position = "absolute";
+      labelRenderer.domElement.style.top = "0";
+      labelRenderer.domElement.style.left = "0";
+      labelRenderer.domElement.style.pointerEvents = "none";
+      container.style.position = "relative";
+      container.appendChild(labelRenderer.domElement);
 
       // Controls
       const controls = new OrbitControls(camera, renderer.domElement);
@@ -245,6 +256,20 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
         const glow = new THREE.Mesh(glowGeo, glowMat);
         glow.position.copy(mesh.position);
         scene.add(glow);
+
+        // CSS2D label for this node
+        const labelDiv = document.createElement("div");
+        labelDiv.textContent = node.content.length > 22 ? node.content.slice(0, 20) + "…" : node.content;
+        labelDiv.style.cssText = `
+          font-size: 9px; font-family: 'Segoe UI', sans-serif;
+          color: #d1d5db; background: rgba(0,0,0,0.65);
+          padding: 2px 6px; border-radius: 4px;
+          white-space: nowrap; pointer-events: none;
+          border: 1px solid rgba(255,255,255,0.06);
+        `;
+        const label = new CSS2DObject(labelDiv);
+        label.position.set(0, radius + 0.25, 0);
+        mesh.add(label);
       }
 
       // Edges
@@ -306,6 +331,7 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
         });
 
         renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
       };
       animate();
 
@@ -315,6 +341,7 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
         camera.aspect = w / height;
         camera.updateProjectionMatrix();
         renderer.setSize(w, height);
+        labelRenderer.setSize(w, height);
       };
       window.addEventListener("resize", onResize);
 
