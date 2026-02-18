@@ -195,6 +195,8 @@ export interface OrgNode {
 }
 
 // ━━━ Tasks / Kanban ━━━
+// Types for the drag-and-drop task board. Tasks flow: backlog → in_progress → review → done.
+// A task can also be "blocked" when dependencies are unmet.
 export type TaskStatus = "backlog" | "in_progress" | "review" | "done" | "blocked";
 export type TaskPriority = "low" | "medium" | "high" | "critical";
 
@@ -209,6 +211,7 @@ export interface TaskItem {
   updated_at: string;
 }
 
+/** Visual config for priority badges — color + icon used in Kanban task cards */
 export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; icon: string }> = {
   critical: { label: "Critical", color: "#ef4444", icon: "🔴" },
   high: { label: "High", color: "#f59e0b", icon: "🟠" },
@@ -216,6 +219,7 @@ export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: strin
   low: { label: "Low", color: "#6b7280", icon: "⚪" },
 };
 
+/** Kanban column definitions — rendered left-to-right in the task board UI */
 export const KANBAN_COLUMNS: { id: TaskStatus; label: string; icon: string; color: string }[] = [
   { id: "backlog", label: "Backlog", icon: "📋", color: "#6b7280" },
   { id: "in_progress", label: "In Progress", icon: "⚡", color: "#f59e0b" },

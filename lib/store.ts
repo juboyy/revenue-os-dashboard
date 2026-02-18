@@ -1,3 +1,8 @@
+/**
+ * Zustand global store — central state for the entire dashboard.
+ * Contains agents, monitoring data, memory graph, interactions, standup messages, and tasks.
+ * Uses mock data generators until OpenClaw live APIs are connected.
+ */
 import { create } from "zustand";
 import type {
   AgentRecord, MonitoringData, Memory, MemoryGraph,
@@ -6,6 +11,10 @@ import type {
 import { AGENT_DEFAULTS } from "./types";
 
 // ━━━ Mock Data Generators ━━━
+// These functions produce realistic sample data for development.
+// They will be replaced by API calls to OpenClaw + Supabase once integrated.
+
+/** Generates monitoring data: token/cost totals, provider/model breakdowns, tool usage, 14-day daily series */
 function generateMockMonitoring(): MonitoringData {
   return {
     totals: {
@@ -64,6 +73,7 @@ function generateMockMonitoring(): MonitoringData {
   };
 }
 
+/** Generates a knowledge graph with 20 memory nodes and 15 edges for the Memory page */
 function generateMockMemories(): MemoryGraph {
   const cats: Memory["category"][] = ["fact", "preference", "decision", "pattern"];
   const agents = AGENT_DEFAULTS.map(a => a.id);
@@ -118,6 +128,7 @@ function generateMockMemories(): MemoryGraph {
   return { nodes, edges };
 }
 
+/** Generates 16 realistic tasks across all Kanban columns with varied priorities */
 function generateMockTasks(): TaskItem[] {
   const now = Date.now();
   return [
@@ -140,7 +151,8 @@ function generateMockTasks(): TaskItem[] {
   ];
 }
 
-// ━━━ Store ━━━
+// ━━━ Store Interface ━━━
+// All top-level state + actions available to any component via useDashboardStore()
 interface DashboardStore {
   // Agents
   agents: AgentRecord[];
@@ -156,10 +168,11 @@ interface DashboardStore {
   // Interactions
   standupMessages: StandupMessage[];
   interactions: InteractionEvent[];
-  // Tasks
+  // Tasks (Kanban board)
   tasks: TaskItem[];
+  /** Moves a task to a new column — called on drag-and-drop in the Kanban */
   moveTask: (taskId: string, newStatus: TaskStatus) => void;
-  // Init
+  /** Hydrates the store with mock data — called once from StoreInitializer on mount */
   initialize: () => void;
 }
 

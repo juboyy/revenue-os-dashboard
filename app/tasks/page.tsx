@@ -1,3 +1,8 @@
+/**
+ * Kanban Task Board — Drag-and-drop task management.
+ * 5 columns: Backlog → In Progress → Review → Done → Blocked.
+ * Uses HTML5 Drag API (no external lib). Tasks update in the Zustand store on drop.
+ */
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -8,11 +13,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function TasksPage() {
   const { tasks, moveTask, agents } = useDashboardStore();
+  // Drag state: which task is being dragged and which column is hovered
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  // Filters: narrow down visible tasks by agent or priority
   const [filterAgent, setFilterAgent] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
 
+  // Apply agent + priority filters before grouping into columns
   const filteredTasks = useMemo(() => {
     let t = tasks;
     if (filterAgent !== "all") t = t.filter(x => x.assignee === filterAgent);
@@ -20,6 +28,7 @@ export default function TasksPage() {
     return t;
   }, [tasks, filterAgent, filterPriority]);
 
+  // Distribute filtered tasks into their respective kanban columns
   const tasksByCol = useMemo(() => {
     const m: Record<string, TaskItem[]> = {};
     KANBAN_COLUMNS.forEach(c => m[c.id] = []);
@@ -27,6 +36,7 @@ export default function TasksPage() {
     return m;
   }, [filteredTasks]);
 
+  // Drag handlers — onDrop calls store.moveTask() to persist the column change
   const handleDragStart = useCallback((taskId: string) => setDraggedTask(taskId), []);
   const handleDragEnd = useCallback(() => { setDraggedTask(null); setDragOverCol(null); }, []);
   const handleDrop = useCallback((colId: string) => {
@@ -35,13 +45,14 @@ export default function TasksPage() {
     setDragOverCol(null);
   }, [draggedTask, moveTask]);
 
+  // Quick lookup: agent id → { name, emoji } for task card rendering
   const agentMap = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
     agents.forEach(a => m[a.id] = { name: a.name, emoji: a.emoji });
     return m;
   }, [agents]);
 
-  // Summary stats
+  // Summary KPIs displayed in the header
   const total = tasks.length;
   const done = tasks.filter(t => t.status === "done").length;
   const blocked = tasks.filter(t => t.status === "blocked").length;
@@ -152,7 +163,10 @@ export default function TasksPage() {
   );
 }
 
-/* ── Task Card ── */
+/**
+ * TaskCard — Draggable card with priority badge, title, description, assignee avatar.
+ * Border-left color matches priority. Shows relative time since last update.
+ */
 function TaskCard({
   task,
   agentMap,
@@ -211,6 +225,7 @@ function TaskCard({
   );
 }
 
+/** Converts ISO timestamp to a short relative string: "5m", "2h", or "3d" */
 function getTimeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.floor(ms / 60000);

@@ -1,3 +1,8 @@
+/**
+ * Virtual Office — Gamified agent headquarters.
+ * Renders a CSS grid floor plan with 9 rooms, each populated by agents.
+ * Features: crew HUD, agent stations with XP/status, detail drawer, activity feed.
+ */
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,6 +11,7 @@ import { getLevelFromXP } from "../../lib/types";
 import type { AgentRecord } from "../../lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 
+/** Status-to-visual mapping — each status gets a color, glow box-shadow, label, and CSS pulse class */
 const STATUS_CONFIG: Record<string, { color: string; glow: string; label: string; pulse: string }> = {
   active:   { color: "#10b981", glow: "0 0 16px rgba(16,185,129,0.5)",  label: "ACTIVE",   pulse: "status-active" },
   working:  { color: "#f59e0b", glow: "0 0 16px rgba(245,158,11,0.5)",  label: "WORKING",  pulse: "status-working" },
@@ -14,6 +20,7 @@ const STATUS_CONFIG: Record<string, { color: string; glow: string; label: string
   sleeping: { color: "#374151", glow: "none",                           label: "SLEEPING", pulse: "" },
 };
 
+/** Room definitions — gridArea maps to CSS grid-template-areas in globals.css (.office-floor) */
 const ROOMS: { id: string; label: string; icon: string; color: string; gridArea: string }[] = [
   { id: "ponte-de-comando", label: "Command Bridge",  icon: "⚓",  color: "#f59e0b", gridArea: "bridge" },
   { id: "forja",            label: "Engineering Lab",  icon: "⚔️",  color: "#3b82f6", gridArea: "eng" },
@@ -26,18 +33,21 @@ const ROOMS: { id: string; label: string; icon: string; color: string; gridArea:
   { id: "cozinha",          label: "Content Kitchen",  icon: "🍳",  color: "#a855f7", gridArea: "content" },
 ];
 
+/** Achievement rarity → border/text color for the achievements grid in the drawer */
 const RARITY_COLORS: Record<string, string> = { common: "#6b7280", rare: "#3b82f6", epic: "#8b5cf6", legendary: "#f59e0b" };
 
 export default function WorldPage() {
   const { agents, tasks } = useDashboardStore();
   const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(null);
 
+  // Group agents by room for floor plan layout
   const roomAgents = useMemo(() => {
     const m: Record<string, AgentRecord[]> = {};
     agents.forEach(a => { if (!m[a.room]) m[a.room] = []; m[a.room].push(a); });
     return m;
   }, [agents]);
 
+  // Aggregate crew-wide stats for the HUD bar
   const crewXP = agents.reduce((s, a) => s + a.xp, 0);
   const crewTasks = agents.reduce((s, a) => s + a.tasks_completed, 0);
   const crewTokens = agents.reduce((s, a) => s + a.tokens_today, 0);
@@ -164,7 +174,10 @@ export default function WorldPage() {
   );
 }
 
-/* ── Agent Station Card ── */
+/**
+ * AgentStation — Compact card for each agent inside a room.
+ * Shows emoji with status glow, name, level badge, streak indicator, XP bar, and current task.
+ */
 function AgentStation({ agent, onClick }: { agent: AgentRecord; onClick: () => void }) {
   const lvl = getLevelFromXP(agent.xp);
   const st = STATUS_CONFIG[agent.status];
@@ -207,7 +220,11 @@ function AgentStation({ agent, onClick }: { agent: AgentRecord; onClick: () => v
   );
 }
 
-/* ── Agent Detail Drawer ── */
+/**
+ * AgentDrawer — Slide-in right panel with full agent profile.
+ * Sections: header + soul quote, XP progress bar, summary stats,
+ * animated stats radar bars, achievements grid (colored by rarity), action buttons.
+ */
 function AgentDrawer({ agent, onClose }: { agent: AgentRecord; onClose: () => void }) {
   const lvl = getLevelFromXP(agent.xp);
   const st = STATUS_CONFIG[agent.status];
