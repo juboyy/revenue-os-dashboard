@@ -177,7 +177,7 @@ export default function DigitalOfficePage() {
   };
   
   // Posicionar agentes dentro de suas áreas
-  const getAgentPosition = (agentId) => {
+  const getAgentPosition = (agentId: keyof typeof AGENT_AREAS) => {
     const areaId = AGENT_AREAS[agentId];
     const area = OFFICE_AREAS.find(a => a.id === areaId);
     
@@ -203,15 +203,17 @@ export default function DigitalOfficePage() {
     
     // Inicializar posições
     agents.forEach(agent => {
-      if (!agentPositions[agent.agent_id]) {
-        agentPositions[agent.agent_id] = getAgentPosition(agent.agent_id);
+      const id = agent.agent_id as keyof typeof AGENT_AREAS;
+      if (!agentPositions[id]) {
+        agentPositions[id] = getAgentPosition(id);
       }
     });
     
     // Frame de animação atual para cada agente
     const agentFrames = {};
     agents.forEach(agent => {
-      agentFrames[agent.agent_id] = {
+      const id = agent.agent_id as keyof typeof AGENT_AREAS;
+      agentFrames[id] = {
         frame: 0,
         lastUpdate: 0
       };
@@ -254,7 +256,8 @@ export default function DigitalOfficePage() {
       
       // Desenhar agentes
       agents.forEach(agent => {
-        const pos = agentPositions[agent.agent_id];
+        const id = agent.agent_id as keyof typeof AGENT_AREAS;
+        const pos = agentPositions[id];
         if (!pos) return;
         
         const x = pos.x * canvas.width / 100;
@@ -264,14 +267,14 @@ export default function DigitalOfficePage() {
         const isSelected = selectedAgent === agent.agent_id;
         
         // Atualizar frame de animação
-        const frameData = agentFrames[agent.agent_id];
+        const frameData = agentFrames[id];
         if (timestamp - frameData.lastUpdate > spriteInfo.frameTime) {
           frameData.frame = (frameData.frame + 1) % spriteInfo.frames;
           frameData.lastUpdate = timestamp;
         }
         
         // Desenhar sprite
-        const sprite = spritesRef.current[getAgentSprite(agent.agent_id)];
+        const sprite = spritesRef.current[getAgentSprite(id)];
         if (sprite) {
           const frameWidth = sprite.width / spriteInfo.frames;
           const frameHeight = sprite.height / 3; // 3 estados (idle, active, error)
@@ -350,7 +353,8 @@ export default function DigitalOfficePage() {
     let clickedAgent = null;
     
     agents.forEach(agent => {
-      const pos = getAgentPosition(agent.agent_id);
+      const id = agent.agent_id as keyof typeof AGENT_AREAS;
+      const pos = getAgentPosition(id);
       if (!pos) return;
       
       const agentX = pos.x * canvas.width / 100;
@@ -633,7 +637,7 @@ export default function DigitalOfficePage() {
               ></div>
               <span className="text-gray-300">{area.name}</span>
               <span className="text-gray-500 ml-auto">
-                {agents.filter(a => AGENT_AREAS[a.agent_id] === area.id).length}
+                {agents.filter(a => AGENT_AREAS[a.agent_id as keyof typeof AGENT_AREAS] === area.id).length}
               </span>
             </div>
           ))}
