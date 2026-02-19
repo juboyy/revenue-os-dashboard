@@ -125,7 +125,7 @@ export default function DigitalOfficePage() {
   // Pré-carregar sprites
   useEffect(() => {
     const loadSprites = async () => {
-      const sprites = {};
+      const sprites: Record<string, HTMLImageElement> = {};
       
       // Lista de sprites a serem carregados
       const spriteUrls = [
