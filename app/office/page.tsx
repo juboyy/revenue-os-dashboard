@@ -161,7 +161,7 @@ export default function DigitalOfficePage() {
   
   // Mapeamento de agentes para sprites
   const getAgentSprite = (agentId: string) => {
-    const mapping = {
+    const mapping: Record<string, string> = {
       "os": "captain",
       "eng-lead": "programmer",
       "ops-lead": "manager",
