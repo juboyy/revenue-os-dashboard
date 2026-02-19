@@ -221,7 +221,7 @@ export default function DigitalOfficePage() {
     });
     
     // Função de loop de animação
-    const animate = (timestamp) => {
+    const animate = (timestamp: number) => {
       if (!lastTimeRef.current) {
         lastTimeRef.current = timestamp;
       }
@@ -342,7 +342,7 @@ export default function DigitalOfficePage() {
   }, [agents, loading.agents, hoveredArea, selectedAgent]);
   
   // Handler para cliques no canvas
-  const handleCanvasClick = (e) => {
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -393,7 +393,7 @@ export default function DigitalOfficePage() {
   };
   
   // Função para verificar se o cursor está sobre uma área
-  const handleCanvasMove = (e) => {
+  const handleCanvasMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
