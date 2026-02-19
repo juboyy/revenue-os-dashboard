@@ -2,7 +2,7 @@
 
 > **O documento único e canônico que consolida toda a visão, arquitetura, requisitos, premissas, implementação e roadmap do Mission Control do OpenClaw.**
 
-**Versão:** 2.0.0 FINAL  
+**Versão:** 3.0.0 FINAL  
 **Data:** 2026-02-19  
 **Autor:** Shanks (OS Captain)  
 **Aprovação:** João Rafael (CEO)  
@@ -86,11 +86,11 @@ Isso significa:
 | # | Premissa | Justificativa |
 |---|---|---|
 | P1 | **NextJS 14 com App Router** | Framework padrão para aplicações React modernas, SSR e API routes integrados |
-| P2 | **Supabase como banco de dados** | PostgreSQL + Realtime nativo + RLS + Auth — tudo integrado. Já em uso |
+| P2 | **Convex como banco de dados** | TypeScript-native, realtime automático em toda query, schema = types, mutations transacionais, full-text search nativo. Substitui Supabase (migração zero — só havia seed data) |
 | P3 | **Vercel para deploy** | Integração nativa com NextJS, Edge Functions, KV Cache |
 | P4 | **Vercel AI Gateway como control plane** | Roteamento unificado de modelos, tracking de custos, sem vendor lock-in |
 | P5 | **TailwindCSS + Framer Motion** | Estilização rápida com animações fluidas. Já implementado |
-| P6 | **Zustand para state management** | Leve, sem boilerplate, suporta subscriptions. Já implementado |
+| P6 | **Convex React hooks (useQuery/useMutation)** | Substitui Zustand + SWR. Toda query é automaticamente reativa — zero boilerplate de subscriptions |
 | P7 | **Canvas/WebGL para Virtual Office** | Performance necessária para sprites animados e interatividade |
 
 ### 2.2 Premissas Operacionais
@@ -101,7 +101,7 @@ Isso significa:
 | O2 | **Sem chamadas LLM para gerar dados do dashboard** | Dados vêm de fontes verificáveis (Supabase, filesystem, APIs). LLMs podem alucinar |
 | O3 | **CEO comunica exclusivamente via Telegram** | Interface primária é o chat. Dashboard é para visualização e controle |
 | O4 | **Agentes operam autonomamente via cron jobs** | Sistema funciona 24/7 sem intervenção humana |
-| O5 | **Supabase é single source of truth** | Todas as fontes de dados convergem para o Supabase via collectors |
+| O5 | **Convex é single source of truth** | Todas as fontes de dados convergem para o Convex via collectors/actions |
 | O6 | **Toda ação de agente é auditável** | Progress-log.md + tabela agent_actions + Mem0 |
 
 ### 2.3 Premissas de Negócio
@@ -150,28 +150,33 @@ Isso significa:
 │                     │  (Global State) │                            │
 │                     └────────┬────────┘                            │
 │                              │                                     │
-│              ┌───────────────┼───────────────┐                     │
-│              │               │               │                     │
-│     ┌────────┴────┐  ┌──────┴──────┐ ┌──────┴──────┐             │
-│     │  Supabase   │  │  Supabase   │ │   SWR       │             │
-│     │  Realtime   │  │   Queries   │ │  Fallback   │             │
-│     │ (WebSocket) │  │   (REST)    │ │  (Polling)  │             │
-│     └────────┬────┘  └──────┬──────┘ └──────┬──────┘             │
-└──────────────┼──────────────┼───────────────┼─────────────────────┘
-               │              │               │
-               └──────────────┼───────────────┘
-                              │
-               ┌──────────────┴──────────────┐
-               │        SUPABASE             │
-               │    (PostgreSQL + Realtime)   │
-               │                             │
-               │  agent_status  │  tasks     │
-               │  agent_stats   │  content   │
-               │  agent_actions │  memories  │
-               │  interactions  │  metrics   │
-               │  cron_jobs     │  bounties  │
-               │  evaluations   │  positions │
-               └──────────────┬──────────────┘
+│              ┌───────────────┴───────────────┐                     │
+│              │                               │                     │
+│     ┌────────┴──────────┐   ┌────────────────┴─────┐             │
+│     │   useQuery()      │   │   useMutation()      │             │
+│     │  (auto-reactive)  │   │  (optimistic writes) │             │
+│     └────────┬──────────┘   └────────────────┬─────┘             │
+└──────────────┼───────────────────────────────┼────────────────────┘
+               │                               │
+               └───────────────┬───────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               │          CONVEX CLOUD         │
+               │     (Reactive Database +      │
+               │      Serverless Functions)    │
+               │                               │
+               │  ┌─────────┐  ┌─────────┐    │
+               │  │ Tables  │  │Functions│    │
+               │  │         │  │         │    │
+               │  │ agents  │  │ queries │    │
+               │  │ tasks   │  │mutations│    │
+               │  │ content │  │ actions │    │
+               │  │memories │  │scheduled│    │
+               │  │ metrics │  │  jobs   │    │
+               │  │cron_jobs│  │         │    │
+               │  │bounties │  │         │    │
+               │  └─────────┘  └─────────┘    │
+               └───────────────┬───────────────┘
                               │
                ┌──────────────┴──────────────┐
                │       DATA COLLECTORS       │
@@ -214,13 +219,24 @@ Isso significa:
 | **Estilização** | TailwindCSS | 3.x | Utility-first CSS, tema customizado (ocean-*) |
 | **Animações** | Framer Motion | 11.x | Transições fluidas, gestos, layout animations |
 | **Canvas** | HTML5 Canvas / three.js | — | Virtual Office rendering, sprites, 3D graph |
-| **State** | Zustand | 4.x | Global state sem boilerplate |
-| **Data Fetching** | SWR + Supabase Realtime | — | Cache + polling + WebSocket subscriptions |
-| **Banco** | Supabase (PostgreSQL) | — | Persistência, Realtime, RLS, Edge Functions |
-| **Deploy** | Vercel | — | Hosting, Edge, KV, Analytics |
+| **Backend + DB** | Convex | latest | Banco reativo, mutations transacionais, full-text search, scheduling, actions — tudo em TypeScript |
+| **State** | Convex React hooks | — | `useQuery` = dados reativos automáticos, `useMutation` = escritas otimistas. Substitui Zustand + SWR + Realtime subscriptions |
+| **Deploy** | Vercel + Convex Cloud | — | Frontend no Vercel, backend no Convex Cloud |
 | **AI Gateway** | Vercel AI Gateway | — | Model routing, cost tracking |
 | **Memória** | Mem0 | — | Persistent agent memory |
 | **Orquestração** | OpenClaw | — | Agent sessions, cron, tools |
+
+### 3.2.1 Por que Convex em vez de Supabase?
+
+| Aspecto | Supabase (anterior) | Convex (atual) |
+|---|---|---|
+| **Realtime** | Precisa configurar publicações, canais, subscriptions manualmente | Toda `useQuery` é automaticamente reativa — zero config |
+| **Schema** | SQL separado + TypeScript types = manutenção dupla | Schema em TypeScript = types gerados automaticamente |
+| **Backend logic** | Edge Functions separadas, SQL triggers | Mutations e Actions no mesmo projeto, mesmo deploy |
+| **Search** | Precisa de extensões (pg_trgm, full-text) | `searchIndex` nativo no schema |
+| **Transações** | Precisa de `BEGIN/COMMIT` manual | Toda mutation é automaticamente transacional |
+| **AI-friendliness** | AI precisa escrever SQL + TypeScript + config | AI escreve apenas TypeScript |
+| **Custo migração** | — | Zero — só havia seed data de 9 agents |
 
 ### 3.3 Estrutura de Diretórios
 
@@ -259,17 +275,24 @@ dashboard/
 │   ├── KPICard.tsx               # Card de KPI reutilizável
 │   ├── StoreInitializer.tsx      # Inicializador do Zustand store
 │   └── ...
-├── lib/                          # Lógica de negócio e utilidades
-│   ├── store.ts                  # Zustand global store
-│   ├── types.ts                  # TypeScript types/interfaces
-│   ├── supabase.ts               # Cliente Supabase
+├── convex/                       # Backend Convex (TypeScript puro)
+│   ├── schema.ts                 # Schema do banco (= types automáticos)
+│   ├── agents.ts                 # Queries + Mutations de agentes
+│   ├── tasks.ts                  # Queries + Mutations de tarefas
+│   ├── content.ts                # Queries + Mutations de conteúdo
+│   ├── memories.ts               # Queries + Mutations + Search de memórias
+│   ├── metrics.ts                # Queries de métricas
+│   ├── cronJobs.ts               # Queries de cron jobs
+│   ├── collectors/               # Actions (coletores de dados reais)
+│   │   ├── sessionCollector.ts   # Coleta status dos agentes do OpenClaw
+│   │   ├── taskCollector.ts      # Coleta tarefas do filesystem
+│   │   ├── metricsCollector.ts   # Coleta métricas de uso
+│   │   └── memoryCollector.ts    # Coleta e indexa memórias
+│   └── _generated/               # Código gerado (api, types)
+├── lib/                          # Utilidades do frontend
+│   ├── types.ts                  # Types adicionais (UI-only)
 │   ├── hooks.ts                  # Custom React hooks
-│   ├── api.ts                    # Funções de API
-│   └── collectors/               # Data collectors
-│       ├── sessionCollector.ts
-│       ├── taskCollector.ts
-│       ├── metricsCollector.ts
-│       └── memoryCollector.ts
+│   └── utils.ts                  # Funções auxiliares
 ├── public/                       # Assets estáticos
 │   └── sprites/                  # Pixel-art sprites para o office
 ├── docs/                         # Documentação
@@ -829,435 +852,288 @@ Cada componente é uma página independente no NextJS App Router, com seu própr
 └─────────────────┘     └─────────────────┘
 ```
 
-### 6.2 SQL Completo (Supabase)
+### 6.2 Schema Completo (Convex)
 
-```sql
--- ═══════════════════════════════════════════════════════════════
--- MISSION CONTROL — Schema Completo para Supabase
--- Versão: 2.0 FINAL
--- ═══════════════════════════════════════════════════════════════
+```typescript
+// convex/schema.ts
+// ═══════════════════════════════════════════════════════════════
+// MISSION CONTROL — Schema Completo para Convex
+// Versão: 3.0 FINAL
+//
+// Diferenças vs SQL:
+// - Tudo em TypeScript (schema = types automáticos)
+// - Toda query é automaticamente reativa
+// - Indexes declaram quais queries são eficientes  
+// - searchIndex habilita full-text search nativo
+// ═══════════════════════════════════════════════════════════════
 
--- Extensões necessárias
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 1. AGENT PROFILES (informações estáticas)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE agent_profiles (
-  id TEXT PRIMARY KEY,                     -- ex: 'eng-lead', 'os'
-  name TEXT NOT NULL,                      -- ex: 'Zoro', 'Shanks'
-  emoji TEXT NOT NULL,                     -- ex: '⚔️', '🏴‍☠️'
-  department TEXT NOT NULL,                -- ex: 'Engineering', 'Command'
-  role TEXT NOT NULL,                      -- ex: 'Engineering Lead'
-  room TEXT NOT NULL,                      -- ex: 'dev-zone', 'command-center'
-  soul TEXT,                               -- Descrição/personalidade
-  model TEXT DEFAULT 'glm-5',             -- Modelo preferido
-  provider TEXT DEFAULT 'vercel-ai-gateway',
-  skills TEXT[] DEFAULT '{}',             -- Array de skills
-  config JSONB DEFAULT '{}',              -- Configurações extras
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+export default defineSchema({
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 1. AGENTS (profile + status + stats em uma tabela desnormalizada)
+  //    No Convex, preferimos uma tabela única para evitar joins
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  agents: defineTable({
+    // Profile
+    agentId: v.string(),                   // ex: 'eng-lead', 'os'
+    name: v.string(),                      // ex: 'Zoro', 'Shanks'
+    emoji: v.string(),                     // ex: '⚔️', '🏴‍☠️'
+    department: v.string(),                // ex: 'Engineering', 'Command'
+    role: v.string(),                      // ex: 'Engineering Lead'
+    room: v.string(),                      // ex: 'dev-zone', 'command-center'
+    soul: v.optional(v.string()),          // Descrição/personalidade
+    model: v.string(),                     // Modelo preferido
+    provider: v.string(),
+    skills: v.array(v.string()),
+    // Status (realtime)
+    status: v.string(),                    // 'active' | 'working' | 'idle' | 'error' | 'sleeping'
+    currentTask: v.optional(v.string()),
+    sessionKey: v.optional(v.string()),
+    lastHeartbeat: v.number(),             // timestamp ms
+    // Stats (gamification)
+    xp: v.number(),
+    level: v.number(),
+    levelTitle: v.string(),
+    tokensConsumed: v.number(),
+    tokensToday: v.number(),
+    tasksCompleted: v.number(),
+    tasksPending: v.number(),
+    tasksBlocked: v.number(),
+    costTotal: v.number(),
+    streakDays: v.number(),
+    lastActiveDate: v.string(),            // YYYY-MM-DD
+    // Radar stats (0-100)
+    speed: v.number(),
+    accuracy: v.number(),
+    versatility: v.number(),
+    reliability: v.number(),
+    creativity: v.number(),
+  })
+    .index("by_agentId", ["agentId"])
+    .index("by_department", ["department"])
+    .index("by_status", ["status"])
+    .index("by_xp", ["xp"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 2. AGENT STATUS (estado em tempo real)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE agent_status (
-  agent_id TEXT PRIMARY KEY REFERENCES agent_profiles(id),
-  status TEXT NOT NULL DEFAULT 'idle'
-    CHECK (status IN ('active', 'working', 'idle', 'error', 'sleeping')),
-  current_task TEXT,
-  session_key TEXT,
-  last_heartbeat TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 2. AGENT ACTIONS (log append-only de todas as ações)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  agentActions: defineTable({
+    agentId: v.string(),
+    actionType: v.string(),
+    details: v.any(),                      // Objeto livre com detalhes
+    tokensUsed: v.number(),
+    cost: v.number(),
+    xpEarned: v.number(),
+    success: v.boolean(),
+  })
+    .index("by_agentId", ["agentId"])
+    .index("by_actionType", ["actionType"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 3. AGENT STATS (métricas e gamificação)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE agent_stats (
-  agent_id TEXT PRIMARY KEY REFERENCES agent_profiles(id),
-  xp INTEGER DEFAULT 0,
-  level INTEGER DEFAULT 1,
-  level_title TEXT DEFAULT 'Recruit',
-  tokens_consumed BIGINT DEFAULT 0,
-  tokens_today INTEGER DEFAULT 0,
-  tasks_completed INTEGER DEFAULT 0,
-  tasks_pending INTEGER DEFAULT 0,
-  tasks_blocked INTEGER DEFAULT 0,
-  cost_total DECIMAL(10,4) DEFAULT 0,
-  streak_days INTEGER DEFAULT 0,
-  last_active_date DATE DEFAULT CURRENT_DATE,
-  -- Radar stats (0-100)
-  speed INTEGER DEFAULT 50,
-  accuracy INTEGER DEFAULT 50,
-  versatility INTEGER DEFAULT 50,
-  reliability INTEGER DEFAULT 50,
-  creativity INTEGER DEFAULT 50,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 3. TASKS (Kanban Board)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  tasks: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.string(),                    // 'backlog' | 'in_progress' | 'review' | 'done' | 'blocked'
+    priority: v.string(),                  // 'low' | 'medium' | 'high' | 'critical'
+    assignee: v.optional(v.string()),      // agentId ou 'human'
+    assigneeType: v.string(),              // 'human' | 'agent'
+    source: v.optional(v.string()),        // 'Todo.md', 'manual', etc.
+    bountyValue: v.number(),
+    dueDate: v.optional(v.number()),       // timestamp ms
+  })
+    .index("by_status", ["status"])
+    .index("by_assignee", ["assignee"])
+    .index("by_priority", ["priority"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 4. AGENT ACTIONS (log append-only)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE agent_actions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  agent_id TEXT NOT NULL REFERENCES agent_profiles(id),
-  action_type TEXT NOT NULL,
-  details JSONB NOT NULL DEFAULT '{}',
-  tokens_used INTEGER DEFAULT 0,
-  cost DECIMAL(10,4) DEFAULT 0,
-  xp_earned INTEGER DEFAULT 0,
-  success BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 4. CONTENT ITEMS (Content Pipeline)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  contentItems: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    stage: v.string(),                     // 'idea'|'planning'|'script'|'thumbnail'|'filming'|'editing'|'published'
+    script: v.optional(v.string()),        // Texto completo
+    thumbnailUrl: v.optional(v.string()),
+    assignee: v.optional(v.string()),
+    tags: v.array(v.string()),
+    dueDate: v.optional(v.number()),
+  })
+    .index("by_stage", ["stage"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 5. TASKS (Kanban Board)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  description TEXT,
-  status TEXT NOT NULL DEFAULT 'backlog'
-    CHECK (status IN ('backlog', 'in_progress', 'review', 'done', 'blocked')),
-  priority TEXT NOT NULL DEFAULT 'medium'
-    CHECK (priority IN ('low', 'medium', 'high', 'critical')),
-  assignee TEXT REFERENCES agent_profiles(id),
-  assignee_type TEXT DEFAULT 'agent'
-    CHECK (assignee_type IN ('human', 'agent')),
-  source TEXT,                             -- 'Todo.md', 'manual', etc.
-  bounty_value INTEGER DEFAULT 0,
-  due_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 5. INTERACTIONS (comunicação entre agentes)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  interactions: defineTable({
+    fromAgent: v.string(),
+    toAgent: v.string(),
+    type: v.string(),                      // 'delegation'|'collaboration'|'escalation'|'standup'|'review'
+    content: v.string(),
+    relatedTask: v.optional(v.id("tasks")),
+  })
+    .index("by_fromAgent", ["fromAgent"])
+    .index("by_toAgent", ["toAgent"])
+    .index("by_type", ["type"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 6. CONTENT ITEMS (Content Pipeline)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE content_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  description TEXT,
-  stage TEXT NOT NULL DEFAULT 'idea'
-    CHECK (stage IN ('idea', 'planning', 'script', 'thumbnail', 'filming', 'editing', 'published')),
-  script TEXT,                             -- Texto completo do script
-  thumbnail_url TEXT,
-  assignee TEXT REFERENCES agent_profiles(id),
-  tags TEXT[] DEFAULT '{}',
-  due_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 6. MEMORIES (memórias indexadas — com full-text search!)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  memories: defineTable({
+    title: v.string(),
+    content: v.string(),
+    filePath: v.string(),                  // Caminho do arquivo fonte
+    agentId: v.optional(v.string()),
+    category: v.string(),                  // 'fact'|'preference'|'decision'|'pattern'
+    relevance: v.number(),
+    retrievalCount: v.number(),
+    tags: v.array(v.string()),
+  })
+    .index("by_agentId", ["agentId"])
+    .index("by_category", ["category"])
+    .index("by_filePath", ["filePath"])
+    .searchIndex("search_content", {       // 🔍 Full-text search nativo!
+      searchField: "content",
+      filterFields: ["agentId", "category"],
+    }),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 7. INTERACTIONS (comunicação entre agentes)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE interactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  from_agent TEXT NOT NULL REFERENCES agent_profiles(id),
-  to_agent TEXT NOT NULL REFERENCES agent_profiles(id),
-  type TEXT NOT NULL
-    CHECK (type IN ('delegation', 'collaboration', 'escalation', 'standup', 'review')),
-  content TEXT NOT NULL,
-  related_task UUID REFERENCES tasks(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 7. MEMORY EDGES (relações entre memórias — grafo de conhecimento)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  memoryEdges: defineTable({
+    sourceId: v.id("memories"),
+    targetId: v.id("memories"),
+    relationship: v.string(),
+    weight: v.number(),
+  })
+    .index("by_source", ["sourceId"])
+    .index("by_target", ["targetId"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 8. MEMORIES (memórias indexadas)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE memories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  file_path TEXT NOT NULL,                 -- Caminho do arquivo fonte
-  agent_id TEXT REFERENCES agent_profiles(id),
-  category TEXT NOT NULL DEFAULT 'fact'
-    CHECK (category IN ('fact', 'preference', 'decision', 'pattern')),
-  relevance DECIMAL(3,2) DEFAULT 0.5,
-  retrieval_count INTEGER DEFAULT 0,
-  tags TEXT[] DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 8. METRICS (métricas de uso)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  metrics: defineTable({
+    metricType: v.string(),                // 'system'|'agent'|'model'|'daily'|'tool'
+    metricName: v.string(),
+    date: v.string(),                      // YYYY-MM-DD
+    value: v.any(),                        // Objeto livre com dados da métrica
+  })
+    .index("by_type_name_date", ["metricType", "metricName", "date"])
+    .index("by_type", ["metricType"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 9. MEMORY EDGES (relações entre memórias)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE memory_edges (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  source_id UUID NOT NULL REFERENCES memories(id),
-  target_id UUID NOT NULL REFERENCES memories(id),
-  relationship TEXT NOT NULL,
-  weight DECIMAL(3,2) DEFAULT 0.5,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 9. CRON JOBS (tarefas agendadas — espelho do OpenClaw)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  cronJobs: defineTable({
+    jobId: v.string(),                     // ID do cron no OpenClaw
+    name: v.optional(v.string()),
+    scheduleKind: v.string(),              // 'cron'|'every'|'at'
+    scheduleExpr: v.string(),              // Expressão cron ou intervalo
+    message: v.string(),
+    model: v.optional(v.string()),
+    enabled: v.boolean(),
+    lastRun: v.optional(v.number()),       // timestamp ms
+    nextRun: v.optional(v.number()),
+    lastStatus: v.optional(v.string()),    // 'success'|'error'|'timeout'
+  })
+    .index("by_jobId", ["jobId"])
+    .index("by_nextRun", ["nextRun"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 10. METRICS (métricas de uso)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE metrics (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  metric_type TEXT NOT NULL,               -- 'system', 'agent', 'model', 'daily', 'tool'
-  metric_name TEXT NOT NULL,
-  date TEXT NOT NULL,                      -- YYYY-MM-DD
-  value_json JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (metric_type, metric_name, date)
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 10. CRON RUNS (histórico de execuções)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  cronRuns: defineTable({
+    jobId: v.string(),
+    status: v.string(),                    // 'success'|'error'|'timeout'|'skipped'
+    durationMs: v.optional(v.number()),
+    output: v.optional(v.string()),
+    error: v.optional(v.string()),
+  })
+    .index("by_jobId", ["jobId"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 11. CRON JOBS (tarefas agendadas — espelho do OpenClaw)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE cron_jobs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  job_id TEXT UNIQUE NOT NULL,             -- ID do cron no OpenClaw
-  name TEXT,
-  schedule_kind TEXT NOT NULL,             -- 'cron', 'every', 'at'
-  schedule_expr TEXT NOT NULL,             -- Expressão cron ou intervalo
-  message TEXT NOT NULL,
-  model TEXT,
-  enabled BOOLEAN DEFAULT true,
-  last_run TIMESTAMPTZ,
-  next_run TIMESTAMPTZ,
-  last_status TEXT,                        -- 'success', 'error', 'timeout'
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 11. BOUNTIES (recompensas)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  bounties: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    bountyType: v.string(),                // 'task'|'investigation'|'improvement'|'documentation'|'critical'
+    value: v.number(),                     // XP reward
+    taskId: v.optional(v.id("tasks")),
+    claimant: v.optional(v.string()),      // agentId
+    status: v.string(),                    // 'open'|'claimed'|'completed'|'expired'
+    claimedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_status", ["status"])
+    .index("by_claimant", ["claimant"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 12. CRON RUNS (histórico de execuções)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE cron_runs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  job_id TEXT NOT NULL REFERENCES cron_jobs(job_id),
-  status TEXT NOT NULL CHECK (status IN ('success', 'error', 'timeout', 'skipped')),
-  duration_ms INTEGER,
-  output TEXT,
-  error TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 12. EVALUATIONS (avaliações de performance)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  evaluations: defineTable({
+    agentId: v.string(),
+    reviewerId: v.string(),
+    periodStart: v.number(),               // timestamp ms
+    periodEnd: v.number(),
+    score: v.number(),                     // 0-100
+    metrics: v.any(),
+    feedback: v.optional(v.string()),
+    action: v.optional(v.string()),        // 'promote'|'maintain'|'demote'|'terminate'
+  })
+    .index("by_agentId", ["agentId"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 13. BOUNTIES (recompensas)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE bounties (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  description TEXT,
-  bounty_type TEXT NOT NULL
-    CHECK (bounty_type IN ('task', 'investigation', 'improvement', 'documentation', 'critical')),
-  value INTEGER NOT NULL,                  -- XP reward
-  task_id UUID REFERENCES tasks(id),
-  claimant TEXT REFERENCES agent_profiles(id),
-  status TEXT NOT NULL DEFAULT 'open'
-    CHECK (status IN ('open', 'claimed', 'completed', 'expired')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  claimed_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 13. SYSTEM HEALTH (saúde do sistema)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  systemHealth: defineTable({
+    checkType: v.string(),                 // 'convex'|'github'|'vercel'|'openclaw'
+    status: v.string(),                    // 'ok'|'degraded'|'down'
+    responseMs: v.optional(v.number()),
+    details: v.optional(v.any()),
+  })
+    .index("by_checkType", ["checkType"]),
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 14. EVALUATIONS (avaliações de performance)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE evaluations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  agent_id TEXT NOT NULL REFERENCES agent_profiles(id),
-  reviewer_id TEXT NOT NULL REFERENCES agent_profiles(id),
-  period_start TIMESTAMPTZ NOT NULL,
-  period_end TIMESTAMPTZ NOT NULL,
-  score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 100),
-  metrics JSONB NOT NULL DEFAULT '{}',
-  feedback TEXT,
-  action TEXT CHECK (action IN ('promote', 'maintain', 'demote', 'terminate')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 14. SPAWN REQUESTS (pedidos de criação de agentes)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  spawnRequests: defineTable({
+    templateId: v.string(),
+    requester: v.optional(v.string()),
+    reason: v.string(),
+    customConfig: v.optional(v.any()),
+    status: v.string(),                    // 'pending'|'approved'|'spawning'|'active'|'rejected'|'failed'
+    approvedBy: v.optional(v.string()),
+  })
+    .index("by_status", ["status"]),
+});
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 15. SYSTEM HEALTH (saúde do sistema)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE system_health (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  check_type TEXT NOT NULL,                -- 'supabase', 'github', 'vercel', 'openclaw'
-  status TEXT NOT NULL CHECK (status IN ('ok', 'degraded', 'down')),
-  response_ms INTEGER,
-  details JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 16. SPAWN REQUESTS (pedidos de criação de agentes)
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATE TABLE spawn_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  template_id TEXT NOT NULL,
-  requester TEXT REFERENCES agent_profiles(id),
-  reason TEXT NOT NULL,
-  custom_config JSONB DEFAULT '{}',
-  status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'approved', 'spawning', 'active', 'rejected', 'failed')),
-  approved_by TEXT REFERENCES agent_profiles(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ═══════════════════════════════════════════════════════════════
--- VIEWS (consultas otimizadas)
--- ═══════════════════════════════════════════════════════════════
-
--- View completa de agentes (profile + status + stats)
-CREATE OR REPLACE VIEW agent_full AS
-  SELECT 
-    p.id, p.name, p.emoji, p.department, p.role, p.room, p.soul,
-    p.model, p.provider, p.skills,
-    s.status, s.current_task, s.last_heartbeat,
-    st.xp, st.level, st.level_title, st.tokens_consumed, st.tokens_today,
-    st.tasks_completed, st.tasks_pending, st.tasks_blocked,
-    st.streak_days, st.speed, st.accuracy, st.versatility, st.reliability, st.creativity
-  FROM agent_profiles p
-  LEFT JOIN agent_status s ON p.id = s.agent_id
-  LEFT JOIN agent_stats st ON p.id = st.agent_id;
-
--- View resumo de tarefas
-CREATE OR REPLACE VIEW task_summary AS
-  SELECT 
-    status, 
-    COUNT(*) as count,
-    SUM(CASE WHEN priority = 'critical' THEN 1 ELSE 0 END) as critical,
-    SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high,
-    SUM(CASE WHEN priority = 'medium' THEN 1 ELSE 0 END) as medium,
-    SUM(CASE WHEN priority = 'low' THEN 1 ELSE 0 END) as low
-  FROM tasks
-  GROUP BY status;
-
--- ═══════════════════════════════════════════════════════════════
--- TRIGGERS (automações)
--- ═══════════════════════════════════════════════════════════════
-
--- Auto-update de updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_agent_status_updated
-  BEFORE UPDATE ON agent_status
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER trg_tasks_updated
-  BEFORE UPDATE ON tasks
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER trg_content_updated
-  BEFORE UPDATE ON content_items
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
--- Auto-level up baseado em XP
-CREATE OR REPLACE FUNCTION auto_level_up()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.xp >= 10000 THEN
-    NEW.level := 7; NEW.level_title := 'Legend';
-  ELSIF NEW.xp >= 5000 THEN
-    NEW.level := 6; NEW.level_title := 'Champion';
-  ELSIF NEW.xp >= 2500 THEN
-    NEW.level := 5; NEW.level_title := 'Master';
-  ELSIF NEW.xp >= 1200 THEN
-    NEW.level := 4; NEW.level_title := 'Veteran';
-  ELSIF NEW.xp >= 600 THEN
-    NEW.level := 3; NEW.level_title := 'Expert';
-  ELSIF NEW.xp >= 300 THEN
-    NEW.level := 2; NEW.level_title := 'Specialist';
-  ELSIF NEW.xp >= 100 THEN
-    NEW.level := 1; NEW.level_title := 'Apprentice';
-  ELSE
-    NEW.level := 0; NEW.level_title := 'Recruit';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_auto_level_up
-  BEFORE UPDATE OF xp ON agent_stats
-  FOR EACH ROW EXECUTE FUNCTION auto_level_up();
-
--- ═══════════════════════════════════════════════════════════════
--- REALTIME (ativar subscriptions)
--- ═══════════════════════════════════════════════════════════════
-BEGIN;
-  ALTER PUBLICATION supabase_realtime ADD TABLE agent_status;
-  ALTER PUBLICATION supabase_realtime ADD TABLE agent_stats;
-  ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
-  ALTER PUBLICATION supabase_realtime ADD TABLE content_items;
-  ALTER PUBLICATION supabase_realtime ADD TABLE interactions;
-  ALTER PUBLICATION supabase_realtime ADD TABLE cron_jobs;
-  ALTER PUBLICATION supabase_realtime ADD TABLE system_health;
-COMMIT;
-
--- ═══════════════════════════════════════════════════════════════
--- RLS (Row Level Security)
--- ═══════════════════════════════════════════════════════════════
-ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE agent_status ENABLE ROW LEVEL SECURITY;
-ALTER TABLE agent_stats ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE content_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE interactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE metrics ENABLE ROW LEVEL SECURITY;
-
--- Políticas de leitura para anon (dashboard público)
-CREATE POLICY "anon_read" ON agent_profiles FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON agent_status FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON agent_stats FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON tasks FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON content_items FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON interactions FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON memories FOR SELECT USING (true);
-CREATE POLICY "anon_read" ON metrics FOR SELECT USING (true);
-
--- Políticas de escrita para service_role (collectors)
-CREATE POLICY "service_write" ON agent_status FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_write" ON agent_stats FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_write" ON tasks FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_write" ON content_items FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_write" ON interactions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_write" ON memories FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_write" ON metrics FOR ALL USING (true) WITH CHECK (true);
-
--- ═══════════════════════════════════════════════════════════════
--- SEED DATA (9 agentes iniciais)
--- ═══════════════════════════════════════════════════════════════
-INSERT INTO agent_profiles (id, name, emoji, department, role, room, soul, skills) VALUES
-  ('os',        'Shanks',  '🏴‍☠️', 'Command',        'Chief of Staff',       'command-center',  'The captain who sees the whole ocean.',   ARRAY['Strategy', 'Delegation', 'Decisions']),
-  ('eng-lead',  'Zoro',    '⚔️',  'Engineering',     'Engineering Lead',     'dev-zone',        'Three-sword style coder.',               ARRAY['TypeScript', 'React', 'APIs', 'Tests']),
-  ('ops-lead',  'Nami',    '💰',  'Operations',      'Operations Lead',      'operations-hub',  'Every berry counts, every token tracked.', ARRAY['Planning', 'Processes', 'Sprint']),
-  ('doc-lead',  'Robin',   '📚',  'Content',         'Documentation Lead',   'docs-library',    'The archaeologist of knowledge.',         ARRAY['Writing', 'Markdown', 'Tutorials']),
-  ('researcher','Chopper',  '🩺',  'Intelligence',    'Research Lead',        'research-lab',    'The tiny doctor with a giant brain.',     ARRAY['Research', 'Analysis', 'Benchmarks']),
-  ('architect', 'Franky',  '🤖',  'Infrastructure',  'Architecture Lead',    'dev-zone',        'SUUUPER architect!',                      ARRAY['System Design', 'ADRs', 'Specs']),
-  ('devops',    'Jinbe',   '⚓',  'Infrastructure',  'DevOps Engineer',      'server-room',     'The helmsman who keeps the ship steady.', ARRAY['CI/CD', 'Docker', 'Monitoring']),
-  ('billing',   'Usopp',   '🎯',  'Operations',      'QA & Finance',         'operations-hub',  'The sniper who never misses a bug.',      ARRAY['Testing', 'QA', 'Finance']),
-  ('comms-lead','Sanji',   '🍳',  'Content',         'Communications Lead',  'coffee-lounge',   'Every dish plated to perfection.',        ARRAY['Copywriting', 'Marketing', 'Comms']);
-
-INSERT INTO agent_status (agent_id, status) VALUES
-  ('os',        'active'),
-  ('eng-lead',  'idle'),
-  ('ops-lead',  'idle'),
-  ('doc-lead',  'idle'),
-  ('researcher','idle'),
-  ('architect', 'idle'),
-  ('devops',    'idle'),
-  ('billing',   'idle'),
-  ('comms-lead','idle');
-
-INSERT INTO agent_stats (agent_id) VALUES
-  ('os'), ('eng-lead'), ('ops-lead'), ('doc-lead'),
-  ('researcher'), ('architect'), ('devops'), ('billing'), ('comms-lead');
+// ═══════════════════════════════════════════════════════════════
+// NOTAS SOBRE CONVEX vs SQL:
+//
+// 1. SEM VIEWS: No Convex, "views" são queries TypeScript.
+//    Em vez de CREATE VIEW, escrevemos uma query function.
+//
+// 2. SEM TRIGGERS: No Convex, lógica de trigger vai dentro
+//    das mutations (ex: auto-level-up ao atualizar XP).
+//
+// 3. SEM RLS: No Convex, permissões são controladas por
+//    function-level auth checks dentro de queries/mutations.
+//
+// 4. REALTIME AUTOMÁTICO: Toda useQuery() é reativa.
+//    Não precisa de ALTER PUBLICATION ou canais.
+//
+// 5. SEARCH NATIVO: searchIndex no schema habilita
+//    full-text search sem extensões.
+//
+// 6. IDs: Convex gera IDs automaticamente (_id).
+//    Não precisa de uuid_generate_v4().
+//
+// 7. TIMESTAMPS: Convex adiciona _creationTime automaticamente.
+//    Campos de timestamp adicionais são opcionais.
+// ═══════════════════════════════════════════════════════════════
 ```
 
 ---
@@ -1283,31 +1159,31 @@ INSERT INTO agent_stats (agent_id) VALUES
 
 Cada collector é um módulo que extrai dados de uma fonte e persiste no Supabase.
 
-| Collector | Fonte | Frequência | Tabelas Afetadas |
+| Collector | Fonte | Frequência | Tabelas Convex Afetadas |
 |---|---|---|---|
-| **Session Collector** | OpenClaw sessions | A cada 2 min | `agent_status` |
+| **Session Collector** | OpenClaw sessions | A cada 2 min | `agents` |
 | **Task Collector** | Todo.md + Progress-log.md | A cada 5 min | `tasks` |
 | **Metrics Collector** | OpenClaw session logs | A cada 10 min | `metrics` |
-| **Memory Collector** | memory/*.md + Mem0 | A cada 15 min | `memories`, `memory_edges` |
-| **Cron Collector** | OpenClaw cron list | A cada 5 min | `cron_jobs`, `cron_runs` |
-| **Health Collector** | APIs (Supabase, GitHub, Vercel) | A cada 5 min | `system_health` |
+| **Memory Collector** | memory/*.md + Mem0 | A cada 15 min | `memories`, `memoryEdges` |
+| **Cron Collector** | OpenClaw cron list | A cada 5 min | `cronJobs`, `cronRuns` |
+| **Health Collector** | APIs (Convex, GitHub, Vercel) | A cada 5 min | `systemHealth` |
 
 ### 7.4 Fluxo de Coleta
 
 ```
-1. Cron job dispara collector
-2. Collector lê fonte de dados (API, filesystem, OpenClaw)
+1. Convex scheduled function dispara collector (ou cron job externo chama HTTP action)
+2. Collector (Convex Action) lê fonte de dados (API, filesystem, OpenClaw)
 3. Collector transforma dados para formato da tabela
-4. Collector faz upsert no Supabase (batch quando possível)
-5. Supabase Realtime notifica subscribers (dashboard)
-6. Dashboard atualiza em tempo real
+4. Collector chama mutations para upsert no Convex
+5. Convex automaticamente notifica todas as useQuery() abertas
+6. Dashboard re-renderiza em tempo real — zero código adicional
 ```
 
 ### 7.5 Reconciliation Loop
 
 A cada 30 minutos, um loop de reconciliação verifica consistência:
 
-1. Compara dados do Supabase com fontes primárias
+1. Compara dados do Convex com fontes primárias
 2. Identifica discrepâncias (agentes faltando, status desatualizado)
 3. Corrige automaticamente quando possível
 4. Loga anomalias no `system_health`
@@ -1361,48 +1237,65 @@ Bounties são recompensas associadas a tarefas ou investigações. Funcionam com
 
 ## 9. SINCRONIZAÇÃO EM TEMPO REAL
 
-### 9.1 Estratégia de 3 Camadas
+### 9.1 Estratégia com Convex (Simplificada)
+
+Com Convex, a sincronização em tempo real é **automática**. Não há camadas manuais.
 
 ```
-Camada 1: Supabase Realtime (WebSocket)
-├── Latência: <100ms
-├── Tabelas: agent_status, tasks, interactions
-└── Uso: Dados que mudam frequentemente
-
-Camada 2: SWR Polling (HTTP)
-├── Intervalo: 30-60s
-├── Endpoints: /api/metrics, /api/cron-jobs
-└── Uso: Dados que mudam com menos frequência
-
-Camada 3: Cache Local (localStorage)
-├── TTL: 5 min
-├── Dados: Último snapshot completo
-└── Uso: Fallback quando offline
+┌─────────────────────────────────────────────┐
+│          useQuery(api.agents.list)           │
+│                                             │
+│  1. Primeira chamada: fetch dados            │
+│  2. Convex mantém WebSocket aberto           │
+│  3. Quando dados mudam: re-render automático │
+│  4. Reconexão automática se cair             │
+│  5. Optimistic updates com useMutation       │
+│                                             │
+│  Zero config. Zero boilerplate. Zero cleanup.│
+└─────────────────────────────────────────────┘
 ```
 
 ### 9.2 Implementação no Frontend
 
 ```typescript
-// Padrão para cada componente do dashboard:
+// Com Convex, cada componente é DRASTICAMENTE mais simples:
 
-useEffect(() => {
-  // 1. Carregar dados iniciais
-  fetchData();
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
+
+function AgentList() {
+  // Isso é TUDO. Automáticamente reativo.
+  // Quando qualquer agent muda no banco, o componente re-renderiza.
+  const agents = useQuery(api.agents.list);
   
-  // 2. Subscrever a mudanças em tempo real
-  const unsubscribe = subscribeToChanges();
+  // Mutation com optimistic update automático
+  const updateStatus = useMutation(api.agents.updateStatus);
   
-  // 3. Cleanup na desmontagem
-  return () => unsubscribe();
-}, []);
+  if (agents === undefined) return <Loading />;
+  
+  return agents.map(agent => <AgentCard key={agent._id} agent={agent} />);
+}
+
+// Comparação com Supabase (ANTES):
+// - Criar canal de subscription
+// - Configurar on('postgres_changes')
+// - Gerenciar cleanup no useEffect
+// - Configurar SWR fallback
+// - Tratar reconexão manual
+// - ~40 linhas de boilerplate POR COMPONENTE
+//
+// Com Convex (AGORA):
+// - useQuery(api.agents.list)
+// - 1 linha. Pronto.
 ```
 
-### 9.3 Garantias
+### 9.3 Garantias do Convex
 
-- **Ordem garantida:** Supabase Realtime entrega events na ordem de commit
-- **At-least-once:** Events podem duplicar; idempotência no handler
-- **Auto-reconnect:** Supabase reconecta automaticamente após desconexão
-- **Fallback graceful:** Se WebSocket cai, SWR polling assume
+- **Consistência forte:** Leituras sempre refletem o último estado
+- **Reatividade automática:** Qualquer mudança trigger re-render
+- **Reconexão automática:** Convex gerencia a conexão WebSocket
+- **Optimistic updates:** `useMutation` atualiza UI imediatamente
+- **Transações automáticas:** Toda mutation é ACID
 
 ---
 
@@ -1461,11 +1354,13 @@ O Mission Control habilita proatividade de várias formas:
 | Agent Profile | ✅ Pronto | `app/agents/[id]/page.tsx` | 🔴 Mock |
 | Content Pipeline | 🆕 Pendente | — | — |
 | Calendar | 🆕 Pendente | — | — |
-| Zustand Store | ✅ Pronto | `lib/store.ts` | 🔴 Mock generators |
-| Types | ✅ Pronto | `lib/types.ts` | Estático |
-| Supabase Client | ✅ Pronto | `lib/supabase.ts` | Conectado |
+| Zustand Store | ⚠️ A substituir | `lib/store.ts` | 🔴 Mock generators — será substituído por hooks Convex |
+| Types | ✅ Pronto | `lib/types.ts` | Estático — será complementado por types gerados do Convex |
+| Supabase Client | ❌ A remover | `lib/supabase.ts` | Será removido na migração para Convex |
 | API helpers | ✅ Pronto | `lib/api.ts` | Básico |
 | Hooks | ✅ Pronto | `lib/hooks.ts` | Básico |
+| Convex Schema | 🆕 Pendente | `convex/schema.ts` | Schema completo definido neste documento |
+| Convex Functions | 🆕 Pendente | `convex/*.ts` | Queries, mutations, actions, collectors |
 
 ### 11.2 O que precisa ser feito
 
@@ -1490,48 +1385,53 @@ O Mission Control habilita proatividade de várias formas:
 
 ## 12. ROADMAP DE EXECUÇÃO
 
-### Fase 1 — Fundação de Dados (Semana 1)
-**Objetivo:** Eliminar todos os dados mock. Dashboard funcionando com dados reais.
+### Fase 1 — Migração para Convex + Dados Reais
+**Objetivo:** Eliminar todos os dados mock. Dashboard funcionando com Convex e dados reais.  
+**Depende de:** Nada (ponto de partida)
 
-1. ✅ Executar SQL completo no Supabase (criar todas as tabelas)
-2. ✅ Seed dos 9 agentes iniciais
-3. ✅ Ativar Realtime para tabelas críticas
-4. Implementar Session Collector
-5. Implementar Task Collector
-6. Reescrever `lib/store.ts` — remover todas as funções `generateMock*`
-7. Adicionar subscriptions Realtime ao store
-8. Testar: dashboard mostrando dados reais dos agentes
+1. `npx create-convex` — inicializar Convex no projeto
+2. Criar `convex/schema.ts` com o schema completo definido acima
+3. Criar mutations de seed para os 9 agentes iniciais
+4. Criar queries para cada componente (`agents.list`, `tasks.list`, etc.)
+5. Substituir `lib/store.ts` inteiro por hooks Convex (`useQuery`/`useMutation`)
+6. Remover Supabase client (`lib/supabase.ts`) e dependência
+7. Implementar Session Collector como Convex Action
+8. Implementar Task Collector como Convex Action
+9. Testar: dashboard mostrando dados reais dos agentes com reatividade automática
 
-### Fase 2 — Novos Componentes (Semana 2)
-**Objetivo:** Adicionar Content Pipeline e Calendar.
+### Fase 2 — Novos Componentes
+**Objetivo:** Adicionar Content Pipeline, Calendar e pesquisa de memórias.  
+**Depende de:** Fase 1 (Convex funcionando)
 
 1. Criar `/content` — Content Pipeline com 7 estágios
 2. Criar `/calendar` — Calendário com cron jobs
-3. Implementar Cron Collector
-4. Implementar Metrics Collector
-5. Implementar Memory Collector com pesquisa
-6. Atualizar `/memory` — adicionar pesquisa global full-text
-7. Configurar cron jobs para todos os collectors
+3. Implementar Cron Collector (Convex Action)
+4. Implementar Metrics Collector (Convex Action)
+5. Implementar Memory Collector com full-text search (Convex searchIndex)
+6. Atualizar `/memory` — pesquisa global usando `searchIndex`
+7. Configurar Convex scheduled functions para collectors periódicos
 
-### Fase 3 — Economia e Gamificação (Semana 3)
-**Objetivo:** Sistema de XP, bounties e avaliações funcionando.
+### Fase 3 — Economia e Gamificação
+**Objetivo:** Sistema de XP, bounties e avaliações funcionando.  
+**Depende de:** Fase 2 (collectors alimentando dados)
 
-1. Implementar lógica de ganho de XP nos collectors
+1. Implementar lógica de auto-level-up nas mutations de XP
 2. Criar sistema de bounties (criação automática + claim)
-3. Implementar avaliações periódicas
+3. Implementar avaliações periódicas (Convex scheduled function)
 4. Atualizar Leaderboard com dados reais
 5. Atualizar Agent Profile com timeline de ações
 
-### Fase 4 — Polimento e Autonomia (Semana 4)
-**Objetivo:** Sistema autônomo e polido.
+### Fase 4 — Polimento e Autonomia
+**Objetivo:** Sistema autônomo e polido.  
+**Depende de:** Fase 3 (economia funcionando)
 
-1. Implementar circuit breakers
-2. Implementar reconciliation loop
+1. Implementar circuit breakers (lógica nas mutations)
+2. Implementar reconciliation (Convex scheduled function)
 3. Criar sprites finais para o Digital Office
 4. Adicionar notificações e alertas
 5. Testes end-to-end completos
 6. Otimização de performance (lazy load, bundle size)
-7. Deploy final em produção
+7. Deploy final em produção (Vercel + Convex Cloud)
 
 ---
 
@@ -1541,7 +1441,7 @@ O Mission Control habilita proatividade de várias formas:
 
 | SLA | Target | Medição |
 |---|---|---|
-| Uptime do Dashboard | 99.9% | Vercel + Supabase uptime |
+| Uptime do Dashboard | 99.9% | Vercel + Convex Cloud uptime |
 | Latência de atualização | < 2s | Tempo entre evento e UI update |
 | Freshness dos dados | < 5 min | Máximo atraso dos collectors |
 | Error rate dos collectors | < 1% | Falhas / total de execuções |
