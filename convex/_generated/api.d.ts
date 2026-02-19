@@ -9,9 +9,14 @@
  */
 
 import type * as agents from "../agents.js";
+import type * as collectors_memoryCollector from "../collectors/memoryCollector.js";
+import type * as collectors_metricsCollector from "../collectors/metricsCollector.js";
+import type * as collectors_sessionCollector from "../collectors/sessionCollector.js";
+import type * as collectors_taskCollector from "../collectors/taskCollector.js";
 import type * as content from "../content.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as finance from "../finance.js";
+import type * as http from "../http.js";
 import type * as interactions from "../interactions.js";
 import type * as memories from "../memories.js";
 import type * as metrics from "../metrics.js";
@@ -26,9 +31,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
+  "collectors/memoryCollector": typeof collectors_memoryCollector;
+  "collectors/metricsCollector": typeof collectors_metricsCollector;
+  "collectors/sessionCollector": typeof collectors_sessionCollector;
+  "collectors/taskCollector": typeof collectors_taskCollector;
   content: typeof content;
   cronJobs: typeof cronJobs;
   finance: typeof finance;
+  http: typeof http;
   interactions: typeof interactions;
   memories: typeof memories;
   metrics: typeof metrics;
