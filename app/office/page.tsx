@@ -148,7 +148,8 @@ export default function DigitalOfficePage() {
           img.onload = resolve;
         });
         
-        const key = url.split("/").pop().split(".")[0];
+        const file = url.split("/").pop();
+        const key = (file ? file.split(".")[0] : "sprite");
         sprites[key] = img;
       }
       
