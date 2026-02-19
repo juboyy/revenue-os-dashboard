@@ -113,7 +113,7 @@ const AGENT_SPRITES = {
 
 // Componente principal
 export default function DigitalOfficePage() {
-  const { agents, loading, fetchAgents, subscribeToAgents } = useDashboardStore();
+  const { agents } = useDashboardStore();
   const canvasRef = useRef(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [hoveredArea, setHoveredArea] = useState(null);
@@ -121,13 +121,6 @@ export default function DigitalOfficePage() {
   const animFrameRef = useRef(0);
   const lastTimeRef = useRef(0);
   const spritesRef = useRef({});
-  
-  // Carregar agentes e configurar subscrição
-  useEffect(() => {
-    fetchAgents();
-    const unsubscribe = subscribeToAgents();
-    return unsubscribe;
-  }, [fetchAgents, subscribeToAgents]);
   
   // Pré-carregar sprites
   useEffect(() => {
@@ -202,7 +195,7 @@ export default function DigitalOfficePage() {
   // Animação e renderização do canvas
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || loading.agents) return;
+    if (!canvas) return;
     
     const ctx = canvas.getContext("2d");
     const agentPositions = {};
@@ -498,7 +491,7 @@ export default function DigitalOfficePage() {
       
       {/* Canvas do Escritório */}
       <div className="relative">
-        {loading.agents ? (
+        {agents.length === 0 ? (
           <div className="flex items-center justify-center h-96 glass-card">
             <div className="text-center text-gray-500 animate-pulse">
               <div className="text-3xl mb-2">⌛</div>
