@@ -114,13 +114,13 @@ const AGENT_SPRITES = {
 // Componente principal
 export default function DigitalOfficePage() {
   const { agents } = useDashboardStore();
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [hoveredArea, setHoveredArea] = useState(null);
   const [scale, setScale] = useState(1);
   const animFrameRef = useRef(0);
   const lastTimeRef = useRef(0);
-  const spritesRef = useRef({});
+  const spritesRef = useRef<Record<string, HTMLImageElement>>({});
   
   // Pré-carregar sprites
   useEffect(() => {
@@ -199,7 +199,8 @@ export default function DigitalOfficePage() {
     if (!canvas) return;
     
     const ctx = canvas.getContext("2d");
-    const agentPositions = {};
+    if (!ctx) return;
+    const agentPositions: Record<string, { x: number; y: number }> = {};
     
     // Inicializar posições
     agents.forEach(agent => {
@@ -210,7 +211,7 @@ export default function DigitalOfficePage() {
     });
     
     // Frame de animação atual para cada agente
-    const agentFrames = {};
+    const agentFrames: Record<string, { frame: number; lastUpdate: number }> = {};
     agents.forEach(agent => {
       const id = agent.agent_id as keyof typeof AGENT_AREAS;
       agentFrames[id] = {
