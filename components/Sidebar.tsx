@@ -10,8 +10,11 @@ const NAV_ITEMS = [
   { label: "Escritório Virtual", href: "/world", icon: "🏢" },
   { label: "Organograma", href: "/orgchart", icon: "🌳" },
   { label: "Tarefas", href: "/tasks", icon: "📋" },
+  { label: "Content", href: "/content", icon: "🧭" },
+  { label: "Calendar", href: "/calendar", icon: "🗓️" },
   { label: "Monitoramento", href: "/monitoring", icon: "📊" },
   { label: "Memória", href: "/memory", icon: "🧠" },
+
   { label: "Spawn", href: "/spawn", icon: "⚡" },
   { label: "Ranking", href: "/leaderboard", icon: "🏆" },
   { label: "Interações", href: "/interactions", icon: "💬" },

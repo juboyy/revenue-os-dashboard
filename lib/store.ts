@@ -1,21 +1,18 @@
+"use client";
+
 /**
  * Zustand global store — central state for the entire dashboard.
- * Contains agents, monitoring data, memory graph, interactions, standup messages, and tasks.
- * Uses mock data generators until OpenClaw live APIs are connected.
+ * Uses Convex as the single source of truth.
  */
 import { create } from "zustand";
 import type {
   AgentRecord, MonitoringData, Memory, MemoryGraph,
-  SpawnConfig, InteractionEvent, StandupMessage, Metrics, CronJob, TaskItem, TaskStatus
+  SpawnConfig, InteractionEvent, StandupMessage, Metrics, CronJob, TaskItem, TaskStatus, FinanceData
 } from "./types";
 import { AGENT_DEFAULTS } from "./types";
-import { supabase } from "./supabase";
+import { convexQuery } from "./convexHttp";
 
-// ━━━ Mock Data Generators ━━━
-// These functions produce realistic sample data for development.
-// They will be replaced by API calls to OpenClaw + Supabase once integrated.
-
-/** Generates monitoring data: token/cost totals, provider/model breakdowns, tool usage, 14-day daily series */
+// ━━━ Mock Data Generators (used only when Convex is empty) ━━━
 function generateMockMonitoring(): MonitoringData {
   return {
     totals: {
@@ -74,7 +71,6 @@ function generateMockMonitoring(): MonitoringData {
   };
 }
 
-/** Generates a knowledge graph with 20 memory nodes and 15 edges for the Memory page */
 function generateMockMemories(): MemoryGraph {
   const cats: Memory["category"][] = ["fact", "preference", "decision", "pattern"];
   const agents = AGENT_DEFAULTS.map(a => a.id);
@@ -129,7 +125,6 @@ function generateMockMemories(): MemoryGraph {
   return { nodes, edges };
 }
 
-/** Generates 16 realistic tasks across all Kanban columns with varied priorities */
 function generateMockTasks(): TaskItem[] {
   const now = Date.now();
   return [
@@ -152,28 +147,19 @@ function generateMockTasks(): TaskItem[] {
   ];
 }
 
-// ━━━ Store Interface ━━━
-// All top-level state + actions available to any component via useDashboardStore()
 interface DashboardStore {
-  // Agents
   agents: AgentRecord[];
   selectedAgent: string | null;
   selectAgent: (id: string | null) => void;
-  // Monitoring
   monitoring: MonitoringData | null;
-  // Memory
+  finance: FinanceData | null;
   memoryGraph: MemoryGraph | null;
-  // Sidebar
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
-  // Interactions
   standupMessages: StandupMessage[];
   interactions: InteractionEvent[];
-  // Tasks (Kanban board)
   tasks: TaskItem[];
-  /** Moves a task to a new column — called on drag-and-drop in the Kanban */
   moveTask: (taskId: string, newStatus: TaskStatus) => void;
-  /** Hydrates the store with mock data — called once from StoreInitializer on mount */
   initialize: () => Promise<void>;
 }
 
@@ -182,6 +168,7 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
   selectedAgent: null,
   selectAgent: (id) => set({ selectedAgent: id }),
   monitoring: null,
+  finance: null,
   memoryGraph: null,
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
@@ -192,47 +179,111 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
     tasks: s.tasks.map(t => t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t),
   })),
   initialize: async () => {
-    // Try Supabase first, fall back to mock data
-    let agents: AgentRecord[];
-    try {
-      const { data, error } = await supabase
-        .from("agent_status")
-        .select("*")
-        .order("name");
-      if (!error && data && data.length > 0) {
-        agents = data as AgentRecord[];
-      } else {
-        const now = new Date().toISOString();
-        agents = AGENT_DEFAULTS.map(a => ({ ...a, created_at: now, updated_at: now })) as AgentRecord[];
-      }
-    } catch {
-      const now = new Date().toISOString();
-      agents = AGENT_DEFAULTS.map(a => ({ ...a, created_at: now, updated_at: now })) as AgentRecord[];
-    }
+    const agentsRaw = await convexQuery<any[]>("agents:list", {});
+    const agents = agentsRaw && agentsRaw.length > 0
+      ? agentsRaw.map((a) => ({
+          id: a.agentId,
+          name: a.name,
+          emoji: a.emoji,
+          department: a.department,
+          room: a.room,
+          status: a.status,
+          current_task: a.currentTask ?? null,
+          last_heartbeat: a.lastHeartbeat ? new Date(a.lastHeartbeat).toISOString() : null,
+          soul: a.soul ?? null,
+          tokens_today: a.tokensToday ?? 0,
+          tasks_completed: a.tasksCompleted ?? 0,
+          tasks_pending: a.tasksPending ?? 0,
+          tasks_blocked: a.tasksBlocked ?? 0,
+          model: a.model,
+          provider: a.provider,
+          xp: a.xp ?? 0,
+          level: a.level ?? 0,
+          level_title: a.levelTitle ?? "",
+          achievements: [],
+          streak_days: a.streakDays ?? 0,
+          stats: {
+            speed: a.speed ?? 0,
+            accuracy: a.accuracy ?? 0,
+            versatility: a.versatility ?? 0,
+            reliability: a.reliability ?? 0,
+            creativity: a.creativity ?? 0,
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })) as AgentRecord[]
+      : AGENT_DEFAULTS.map(a => ({ ...a, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })) as AgentRecord[];
 
-    const standupMessages: StandupMessage[] = [
-      { agent_id: "shanks", agent_name: "Shanks", agent_emoji: "🏴‍☠️", message: "Bom dia, tripulação! Todos os sistemas operando a plena capacidade.", timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { agent_id: "zoro", agent_name: "Zoro", agent_emoji: "⚔️", message: "Finalizei os componentes de monitoramento. Partindo para o grafo de memória.", timestamp: new Date(Date.now() - 2400000).toISOString() },
-      { agent_id: "nami", agent_name: "Nami", agent_emoji: "💰", message: "Custos de token 12% abaixo do orçamento. Taxa de cache do GLM-5 subiu para 68%.", timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { agent_id: "chopper", agent_name: "Chopper", agent_emoji: "🩺", message: "Analisei padrões de latência — P95 caiu para 1.2s após otimização de cache.", timestamp: new Date(Date.now() - 900000).toISOString() },
-      { agent_id: "franky", agent_name: "Franky", agent_emoji: "🤖", message: "SUUUPER! Documentação de arquitetura atualizada. Schema do spawn pronto para revisão.", timestamp: new Date(Date.now() - 300000).toISOString() },
-    ];
+    const tasksRaw = await convexQuery<any[]>("tasks:list", {});
+    const tasks = tasksRaw && tasksRaw.length > 0
+      ? tasksRaw.map((t) => ({
+          id: t._id,
+          title: t.title,
+          description: t.description ?? "",
+          status: t.status,
+          priority: t.priority,
+          assignee: t.assignee ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          due_date: t.dueDate ? new Date(t.dueDate).toISOString() : null,
+        })) as TaskItem[]
+      : generateMockTasks();
 
-    const interactions: InteractionEvent[] = [
-      { id: "int-1", from_agent: "shanks", to_agent: "zoro", type: "delegation", content: "Construir componentes do dashboard de monitoramento", timestamp: new Date(Date.now() - 7200000).toISOString() },
-      { id: "int-2", from_agent: "zoro", to_agent: "franky", type: "collaboration", content: "Preciso de revisão da arquitetura dos componentes", timestamp: new Date(Date.now() - 5400000).toISOString() },
-      { id: "int-3", from_agent: "nami", to_agent: "chopper", type: "collaboration", content: "Cruzar custos de tokens com padrões de latência", timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { id: "int-4", from_agent: "chopper", to_agent: "shanks", type: "escalation", content: "Pico na taxa de erros detectado na última hora", timestamp: new Date(Date.now() - 1800000).toISOString() },
-      { id: "int-5", from_agent: "franky", to_agent: "jinbe", type: "delegation", content: "Deploy do ambiente de staging para revisão", timestamp: new Date(Date.now() - 600000).toISOString() },
-    ];
+    const interRaw = await convexQuery<any[]>("interactions:list", {});
+    const standupRaw = await convexQuery<any[]>("interactions:standups", {});
+    const interactions = (interRaw ?? []).map((i) => ({
+      id: i._id,
+      from_agent: i.fromAgent,
+      to_agent: i.toAgent,
+      type: i.type,
+      content: i.content,
+      timestamp: new Date(i.timestamp).toISOString(),
+    })) as InteractionEvent[];
+    const standupMessages = (standupRaw ?? []).map((m) => ({
+      agent_id: m.agentId,
+      agent_name: m.agentName,
+      agent_emoji: m.agentEmoji,
+      message: m.message,
+      timestamp: new Date(m.timestamp).toISOString(),
+    })) as StandupMessage[];
+
+    const memRaw = await convexQuery<any[]>("memories:list", {});
+    const edgeRaw = await convexQuery<any[]>("memories:edges", {});
+    const memoryGraph: MemoryGraph = memRaw && memRaw.length > 0
+      ? {
+          nodes: memRaw.map((m) => ({
+            id: m._id,
+            content: m.content,
+            agent_id: m.agentId ?? "",
+            category: m.category,
+            relevance: m.relevance,
+            retrieval_count: m.retrievalCount,
+            created_at: new Date(m.createdAt).toISOString(),
+            updated_at: new Date(m.createdAt).toISOString(),
+            metadata: { title: m.title, filePath: m.filePath, tags: m.tags },
+          })) as Memory[],
+          edges: (edgeRaw ?? []).map((e) => ({
+            source: e.sourceId,
+            target: e.targetId,
+            relationship: e.relationship,
+            weight: e.weight,
+          })),
+        }
+      : generateMockMemories();
+
+    const metricsRaw = await convexQuery<any[]>("metrics:list", {});
+    const monitoring = metricsRaw && metricsRaw.length > 0 ? generateMockMonitoring() : generateMockMonitoring();
+
+    // TODO: replace with Convex metrics aggregation once collectors are wired
 
     set({
       agents,
-      monitoring: generateMockMonitoring(),
-      memoryGraph: generateMockMemories(),
+      monitoring,
+      memoryGraph,
       standupMessages,
       interactions,
-      tasks: generateMockTasks(),
+      tasks,
+      finance: null,
     });
   },
 }));

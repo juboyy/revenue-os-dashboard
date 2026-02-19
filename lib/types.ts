@@ -211,6 +211,7 @@ export interface TaskItem {
   assignee: string | null;
   created_at: string;
   updated_at: string;
+  due_date?: string | null;
 }
 
 /** Visual config for priority badges — color + icon used in Kanban task cards */
@@ -246,6 +247,40 @@ export interface StandupMessage {
   agent_emoji: string;
   message: string;
   timestamp: string;
+}
+
+// ━━━ Finance & Bounties ━━━
+export interface Bounty {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  status: "open" | "assigned" | "in_review" | "completed";
+  assignee?: string;
+  created_at: string;
+  expires_at?: string;
+  tags: string[];
+}
+
+export interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  type: "income" | "expense";
+  category: "tokens" | "bounty" | "subscription" | "other";
+  description: string;
+  timestamp: string;
+}
+
+export interface FinanceData {
+  balance: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  totalProfit: number;
+  revenueSeries: { date: string; amount: number }[];
+  expenseSeries: { date: string; amount: number }[];
+  transactions: Transaction[];
+  bounties: Bounty[];
 }
 
 // ━━━ Navigation ━━━
