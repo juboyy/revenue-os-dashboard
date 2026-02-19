@@ -204,7 +204,7 @@ export default function DigitalOfficePage() {
     
     // Inicializar posições
     agents.forEach(agent => {
-      const id = agent.agent_id as keyof typeof AGENT_AREAS;
+      const id = agent.id as keyof typeof AGENT_AREAS;
       if (!agentPositions[id]) {
         agentPositions[id] = getAgentPosition(id);
       }
@@ -213,7 +213,7 @@ export default function DigitalOfficePage() {
     // Frame de animação atual para cada agente
     const agentFrames: Record<string, { frame: number; lastUpdate: number }> = {};
     agents.forEach(agent => {
-      const id = agent.agent_id as keyof typeof AGENT_AREAS;
+      const id = agent.id as keyof typeof AGENT_AREAS;
       agentFrames[id] = {
         frame: 0,
         lastUpdate: 0
@@ -257,7 +257,7 @@ export default function DigitalOfficePage() {
       
       // Desenhar agentes
       agents.forEach(agent => {
-        const id = agent.agent_id as keyof typeof AGENT_AREAS;
+        const id = agent.id as keyof typeof AGENT_AREAS;
         const pos = agentPositions[id];
         if (!pos) return;
         
@@ -265,7 +265,7 @@ export default function DigitalOfficePage() {
         const y = pos.y * canvas.height / 100;
         const status = agent.status || "idle";
         const spriteInfo = AGENT_SPRITES[status];
-        const isSelected = selectedAgent === agent.agent_id;
+        const isSelected = selectedAgent === agent.id;
         
         // Atualizar frame de animação
         const frameData = agentFrames[id];
@@ -313,7 +313,7 @@ export default function DigitalOfficePage() {
           ctx.font = "bold 12px 'SF Mono', monospace";
           ctx.fillStyle = "#ffffff";
           ctx.textAlign = "center";
-          ctx.fillText(agent.name || agent.agent_id, x, y + 30);
+          ctx.fillText(agent.name || agent.id, x, y + 30);
           
           // Tarefa atual
           if (agent.current_task) {
@@ -354,7 +354,7 @@ export default function DigitalOfficePage() {
     let clickedAgent = null;
     
     agents.forEach(agent => {
-      const id = agent.agent_id as keyof typeof AGENT_AREAS;
+      const id = agent.id as keyof typeof AGENT_AREAS;
       const pos = getAgentPosition(id);
       if (!pos) return;
       
@@ -365,7 +365,7 @@ export default function DigitalOfficePage() {
       const distance = Math.sqrt(dx * dx + dy * dy);
       
       if (distance < 16) {
-        clickedAgent = agent.agent_id;
+        clickedAgent = agent.id;
       }
     });
     
@@ -426,7 +426,7 @@ export default function DigitalOfficePage() {
   
   // Agentar selecionado
   const selectedAgentData = selectedAgent
-    ? agents.find(a => a.agent_id === selectedAgent)
+    ? agents.find(a => a.id === selectedAgent)
     : null;
   
   return (
@@ -544,7 +544,7 @@ export default function DigitalOfficePage() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h3 className="text-white font-medium">
-                      {selectedAgentData.name || selectedAgentData.agent_id}
+                      {selectedAgentData.name || selectedAgentData.id}
                     </h3>
                     <button
                       onClick={() => setSelectedAgent(null)}
@@ -554,8 +554,8 @@ export default function DigitalOfficePage() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {AGENT_AREAS[selectedAgentData.agent_id] 
-                      ? OFFICE_AREAS.find(a => a.id === AGENT_AREAS[selectedAgentData.agent_id])?.name
+                    {AGENT_AREAS[selectedAgentData.id] 
+                      ? OFFICE_AREAS.find(a => a.id === AGENT_AREAS[selectedAgentData.id])?.name
                       : "Unknown Area"}
                   </p>
                 </div>
@@ -604,7 +604,7 @@ export default function DigitalOfficePage() {
               
               {/* Botões de ação */}
               <div className="mt-3 flex items-center gap-2">
-                <Link href={`/spawn?agent=${selectedAgentData.agent_id}`} className="flex-1">
+                <Link href={`/spawn?agent=${selectedAgentData.id}`} className="flex-1">
                   <button className="w-full py-1.5 text-xs bg-accent-blue/20 text-accent-blue rounded hover:bg-accent-blue/30 transition-colors">
                     Spawn Agente
                   </button>
@@ -638,7 +638,7 @@ export default function DigitalOfficePage() {
               ></div>
               <span className="text-gray-300">{area.name}</span>
               <span className="text-gray-500 ml-auto">
-                {agents.filter(a => AGENT_AREAS[a.agent_id as keyof typeof AGENT_AREAS] === area.id).length}
+                {agents.filter(a => AGENT_AREAS[a.id as keyof typeof AGENT_AREAS] === area.id).length}
               </span>
             </div>
           ))}

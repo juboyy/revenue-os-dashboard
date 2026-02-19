@@ -117,9 +117,9 @@ export default function TeamStructurePage() {
   // Organizar agentes por departamento
   const departmentAgents = DEPARTMENTS.reduce((acc, dept) => {
     acc[dept.id] = agents.filter(
-      (agent) => AGENT_DEPARTMENTS[agent.agent_id] === dept.id
+      (agent) => AGENT_DEPARTMENTS[agent.id] === dept.id
     ).sort((a, b) => 
-      (AGENT_HIERARCHY[a.agent_id] || 99) - (AGENT_HIERARCHY[b.agent_id] || 99)
+      (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.agent_id] || 99)
     );
     return acc;
   }, {});
@@ -128,7 +128,7 @@ export default function TeamStructurePage() {
   const filteredAgents = selectedDepartment 
     ? departmentAgents[selectedDepartment] 
     : agents.sort((a, b) => 
-        (AGENT_HIERARCHY[a.agent_id] || 99) - (AGENT_HIERARCHY[b.agent_id] || 99)
+        (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.agent_id] || 99)
       );
 
   return (
@@ -183,17 +183,17 @@ export default function TeamStructurePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAgents.map((agent) => {
             const dept = DEPARTMENTS.find(
-              (d) => d.id === AGENT_DEPARTMENTS[agent.agent_id]
+              (d) => d.id === AGENT_DEPARTMENTS[agent.id]
             );
             
             return (
               <motion.div
-                key={agent.agent_id}
+                key={agent.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ scale: 1.02 }}
                 className={`glass-card p-4 border ${dept?.borderColor || "border-glass-border"} relative overflow-hidden group`}
-                onMouseEnter={() => setHoverAgent(agent.agent_id)}
+                onMouseEnter={() => setHoverAgent(agent.id)}
                 onMouseLeave={() => setHoverAgent(null)}
               >
                 {/* Fundo gradiente */}
@@ -211,7 +211,7 @@ export default function TeamStructurePage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-white font-medium">
-                        {agent.name || agent.agent_id}
+                        {agent.name || agent.id}
                       </h3>
                       <span className={`w-2 h-2 rounded-full ${
                         agent.status === "active" ? "bg-accent-green animate-pulse" : 
@@ -219,11 +219,11 @@ export default function TeamStructurePage() {
                       }`} />
                     </div>
                     <p className="text-xs text-gray-500">
-                      {AGENT_ROLES[agent.agent_id] || "Agente"}
+                      {AGENT_ROLES[agent.id] || "Agente"}
                     </p>
                   </div>
                   
-                  <Link href={`/spawn?agent=${agent.agent_id}`}>
+                  <Link href={`/spawn?agent=${agent.id}`}>
                     <button className="text-xs bg-ocean-700/70 hover:bg-ocean-600 text-gray-300 py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                       Spawn
                     </button>
@@ -242,7 +242,7 @@ export default function TeamStructurePage() {
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase mb-1.5">Especialidades</p>
                   <div className="flex flex-wrap gap-1">
-                    {(AGENT_SKILLS[agent.agent_id] || []).map((skill) => (
+                    {(AGENT_SKILLS[agent.id] || []).map((skill) => (
                       <span 
                         key={skill} 
                         className="text-[10px] px-1.5 py-0.5 rounded bg-ocean-800/70 text-gray-400"
@@ -272,7 +272,7 @@ export default function TeamStructurePage() {
                 </div>
                 
                 {/* Conexões (mostradas no hover) */}
-                {hoverAgent === agent.agent_id && (
+                {hoverAgent === agent.id && (
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -327,9 +327,9 @@ export default function TeamStructurePage() {
                 <div className="mt-2 flex -space-x-2">
                   {deptAgents.slice(0, 5).map((agent) => (
                     <div 
-                      key={agent.agent_id}
+                      key={agent.id}
                       className="w-8 h-8 rounded-full bg-ocean-800 border border-glass-border flex items-center justify-center text-sm"
-                      title={agent.name || agent.agent_id}
+                      title={agent.name || agent.id}
                     >
                       {agent.emoji || "🤖"}
                     </div>
