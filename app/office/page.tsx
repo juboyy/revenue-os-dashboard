@@ -80,7 +80,7 @@ const OFFICE_AREAS = [
 ];
 
 // Mapeamento de agentes para áreas
-const AGENT_AREAS = {
+const AGENT_AREAS: Record<string, string> = {
   "os": "command-center",
   "eng-lead": "dev-zone",
   "ops-lead": "operations-hub",
@@ -93,7 +93,7 @@ const AGENT_AREAS = {
 };
 
 // Sprite frames para diferentes estados
-const AGENT_SPRITES = {
+const AGENT_SPRITES: Record<string, { frames: number; frameTime: number; offsetY: number }> = {
   "idle": {
     frames: 4,
     frameTime: 800,
@@ -103,6 +103,16 @@ const AGENT_SPRITES = {
     frames: 6,
     frameTime: 200,
     offsetY: 1
+  },
+  "working": {
+    frames: 6,
+    frameTime: 200,
+    offsetY: 1
+  },
+  "sleeping": {
+    frames: 4,
+    frameTime: 800,
+    offsetY: 0
   },
   "error": {
     frames: 2,
@@ -115,8 +125,8 @@ const AGENT_SPRITES = {
 export default function DigitalOfficePage() {
   const { agents } = useDashboardStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState(null);
-  const [hoveredArea, setHoveredArea] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [hoveredArea, setHoveredArea] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const animFrameRef = useRef(0);
   const lastTimeRef = useRef(0);
@@ -177,7 +187,7 @@ export default function DigitalOfficePage() {
   };
   
   // Posicionar agentes dentro de suas áreas
-  const getAgentPosition = (agentId: keyof typeof AGENT_AREAS) => {
+  const getAgentPosition = (agentId: string) => {
     const areaId = AGENT_AREAS[agentId];
     const area = OFFICE_AREAS.find(a => a.id === areaId);
     
@@ -204,7 +214,7 @@ export default function DigitalOfficePage() {
     
     // Inicializar posições
     agents.forEach(agent => {
-      const id = agent.id as keyof typeof AGENT_AREAS;
+      const id = agent.id;
       if (!agentPositions[id]) {
         agentPositions[id] = getAgentPosition(id);
       }
@@ -213,7 +223,7 @@ export default function DigitalOfficePage() {
     // Frame de animação atual para cada agente
     const agentFrames: Record<string, { frame: number; lastUpdate: number }> = {};
     agents.forEach(agent => {
-      const id = agent.id as keyof typeof AGENT_AREAS;
+      const id = agent.id;
       agentFrames[id] = {
         frame: 0,
         lastUpdate: 0
@@ -257,7 +267,7 @@ export default function DigitalOfficePage() {
       
       // Desenhar agentes
       agents.forEach(agent => {
-        const id = agent.id as keyof typeof AGENT_AREAS;
+        const id = agent.id;
         const pos = agentPositions[id];
         if (!pos) return;
         
@@ -339,7 +349,7 @@ export default function DigitalOfficePage() {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
     };
-  }, [agents, loading.agents, hoveredArea, selectedAgent]);
+  }, [agents, hoveredArea, selectedAgent]);
   
   // Handler para cliques no canvas
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -354,7 +364,7 @@ export default function DigitalOfficePage() {
     let clickedAgent = null;
     
     agents.forEach(agent => {
-      const id = agent.id as keyof typeof AGENT_AREAS;
+      const id = agent.id;
       const pos = getAgentPosition(id);
       if (!pos) return;
       
@@ -597,7 +607,7 @@ export default function DigitalOfficePage() {
                 <div className="bg-ocean-800/50 p-2 rounded">
                   <p className="text-[10px] text-gray-500 mb-1">TOKENS</p>
                   <p className="text-accent-purple font-mono">
-                    {selectedAgentData.tokens_used?.toLocaleString() || "0"}
+                    {selectedAgentData.tokens_today?.toLocaleString() || "0"}
                   </p>
                 </div>
               </div>
@@ -638,7 +648,7 @@ export default function DigitalOfficePage() {
               ></div>
               <span className="text-gray-300">{area.name}</span>
               <span className="text-gray-500 ml-auto">
-                {agents.filter(a => AGENT_AREAS[a.id as keyof typeof AGENT_AREAS] === area.id).length}
+                {agents.filter(a => AGENT_AREAS[a.id] === area.id).length}
               </span>
             </div>
           ))}

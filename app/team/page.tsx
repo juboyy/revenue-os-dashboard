@@ -52,7 +52,7 @@ const DEPARTMENTS = [
 ];
 
 // Mapeamento de agentes para departamentos
-const AGENT_DEPARTMENTS = {
+const AGENT_DEPARTMENTS: Record<string, string> = {
   "os": "command",
   "eng-lead": "engineering",
   "ops-lead": "operations",
@@ -65,7 +65,7 @@ const AGENT_DEPARTMENTS = {
 };
 
 // Mapeamento de posições hierárquicas
-const AGENT_HIERARCHY = {
+const AGENT_HIERARCHY: Record<string, number> = {
   "os": 1, // CEO
   "eng-lead": 2, // C-Level
   "ops-lead": 2,
@@ -78,7 +78,7 @@ const AGENT_HIERARCHY = {
 };
 
 // Mapeamento de papéis primários
-const AGENT_ROLES = {
+const AGENT_ROLES: Record<string, string> = {
   "os": "Chief of Staff",
   "eng-lead": "Engineering Lead",
   "ops-lead": "Operations Lead",
@@ -91,7 +91,7 @@ const AGENT_ROLES = {
 };
 
 // Mapeamento de especialidades
-const AGENT_SKILLS = {
+const AGENT_SKILLS: Record<string, string[]> = {
   "os": ["Estratégia", "Decisões", "Delegação"],
   "eng-lead": ["Código", "APIs", "Testes"],
   "ops-lead": ["Sprint Planning", "Jira", "Processos"],
@@ -104,31 +104,25 @@ const AGENT_SKILLS = {
 };
 
 export default function TeamStructurePage() {
-  const { agents, loading, fetchAgents, subscribeToAgents } = useDashboardStore();
+  const { agents } = useDashboardStore();
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [hoverAgent, setHoverAgent] = useState<string | null>(null);
   
-  useEffect(() => {
-    fetchAgents();
-    const unsubscribe = subscribeToAgents();
-    return unsubscribe;
-  }, [fetchAgents, subscribeToAgents]);
-  
   // Organizar agentes por departamento
-  const departmentAgents = DEPARTMENTS.reduce((acc, dept) => {
+  const departmentAgents = DEPARTMENTS.reduce((acc: Record<string, typeof agents>, dept) => {
     acc[dept.id] = agents.filter(
       (agent) => AGENT_DEPARTMENTS[agent.id] === dept.id
     ).sort((a, b) => 
-      (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.agent_id] || 99)
+      (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.id] || 99)
     );
     return acc;
-  }, {});
+  }, {} as Record<string, typeof agents>);
   
   // Filtragem de agentes com base no departamento selecionado
   const filteredAgents = selectedDepartment 
     ? departmentAgents[selectedDepartment] 
     : agents.sort((a, b) => 
-        (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.agent_id] || 99)
+        (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.id] || 99)
       );
 
   return (
@@ -172,7 +166,7 @@ export default function TeamStructurePage() {
       </div>
       
       {/* Estrutura Organizacional */}
-      {loading.agents ? (
+      {agents.length === 0 ? (
         <div className="flex items-center justify-center h-96 glass-card">
           <div className="text-center text-gray-500 animate-pulse">
             <div className="text-3xl mb-2">⌛</div>
@@ -258,7 +252,7 @@ export default function TeamStructurePage() {
                   <div className="text-[10px]">
                     <p className="text-gray-500">TOKENS</p>
                     <p className="text-accent-purple">
-                      {agent.tokens_used?.toLocaleString() || "0"}
+                      {agent.tokens_today?.toLocaleString() || "0"}
                     </p>
                   </div>
                   <div className="text-[10px]">
