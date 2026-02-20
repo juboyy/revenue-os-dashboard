@@ -21,10 +21,10 @@ export const upsertAgent = internalMutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        status: args.status,
+        status: args.status as any,
         currentTask: args.currentTask,
         sessionKey: args.sessionKey,
-        lastHeartbeat: args.lastHeartbeat,
+        lastHeartbeat: new Date(args.lastHeartbeat).toISOString(),
         ...(args.tokensToday !== undefined ? { tokensToday: args.tokensToday } : {}),
         ...(args.model !== undefined ? { model: args.model } : {}),
       });

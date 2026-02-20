@@ -25,6 +25,7 @@ export default defineSchema({
     tasksBlocked: v.number(),
     model: v.optional(v.string()),
     provider: v.optional(v.string()),
+    sessionKey: v.optional(v.string()),  // from sessionCollector
     // Gamification
     xp: v.number(),
     level: v.number(),
@@ -58,25 +59,17 @@ export default defineSchema({
 
   // ━━━ Tasks (synced from Todo.md) ━━━
   tasks: defineTable({
-    taskId: v.string(),           // "STRIPE-2026", "DASH-001", etc.
+    taskId: v.optional(v.string()),    // "STRIPE-2026", "DASH-001", etc.
     title: v.string(),
     description: v.optional(v.string()),
-    status: v.union(
-      v.literal("backlog"),
-      v.literal("in_progress"),
-      v.literal("review"),
-      v.literal("done"),
-      v.literal("blocked"),
-    ),
-    priority: v.union(
-      v.literal("low"),
-      v.literal("medium"),
-      v.literal("high"),
-      v.literal("critical"),
-    ),
+    status: v.string(),                // flexible for collectors
+    priority: v.string(),              // flexible for collectors
     assignee: v.optional(v.string()),  // agentId
     jiraKey: v.optional(v.string()),   // "XYZ-456"
     sprint: v.optional(v.string()),
+    assigneeType: v.optional(v.string()),  // from taskCollector
+    source: v.optional(v.string()),        // from taskCollector
+    bountyValue: v.optional(v.number()),   // from taskCollector
   })
     .index("by_status", ["status"])
     .index("by_assignee", ["assignee"])
@@ -85,15 +78,7 @@ export default defineSchema({
   // ━━━ Event log (agent interactions, delegations, errors) ━━━
   events: defineTable({
     agentId: v.string(),
-    eventType: v.union(
-      v.literal("delegation"),
-      v.literal("standup"),
-      v.literal("escalation"),
-      v.literal("collaboration"),
-      v.literal("task_completed"),
-      v.literal("error"),
-      v.literal("heartbeat"),
-    ),
+    eventType: v.string(),             // flexible for all event types
     targetAgentId: v.optional(v.string()),
     description: v.string(),
     metadata: v.optional(v.any()),
@@ -103,21 +88,21 @@ export default defineSchema({
 
   // ━━━ Memories (knowledge graph nodes) ━━━
   memories: defineTable({
-    memoryId: v.string(),
+    memoryId: v.optional(v.string()),
+    title: v.optional(v.string()),        // from memoryCollector
     content: v.string(),
-    agentId: v.string(),
-    category: v.union(
-      v.literal("fact"),
-      v.literal("preference"),
-      v.literal("decision"),
-      v.literal("pattern"),
-    ),
+    agentId: v.optional(v.string()),      // optional for memoryCollector
+    filePath: v.optional(v.string()),     // from memoryCollector
+    category: v.string(),                 // flexible for collectors
     relevance: v.number(),
     retrievalCount: v.number(),
-    source: v.optional(v.string()),  // "MEMORY.md", "daily/2026-02-19.md"
+    source: v.optional(v.string()),       // "MEMORY.md", "daily/2026-02-19.md"
+    tags: v.optional(v.array(v.string())),  // from memoryCollector
+    createdAt: v.optional(v.number()),    // from memoryCollector
   })
     .index("by_agentId", ["agentId"])
-    .index("by_category", ["category"]),
+    .index("by_category", ["category"])
+    .index("by_filePath", ["filePath"]),
 
   // ━━━ Memory edges (connections between memories) ━━━
   memoryEdges: defineTable({
@@ -187,4 +172,58 @@ export default defineSchema({
   })
     .index("by_agentId", ["agentId"])
     .index("by_status", ["status"]),
+
+  // ━━━ Metrics (from metricsCollector) ━━━
+  metrics: defineTable({
+    metricType: v.optional(v.string()),  // "daily"
+    period: v.string(),                   // "2026-02-19"
+    tokens: v.number(),
+    cost: v.number(),
+    messages: v.number(),
+    toolCalls: v.number(),
+    errors: v.number(),
+    provider: v.optional(v.string()),
+    model: v.optional(v.string()),
+    latencyAvg: v.optional(v.number()),
+    latencyP95: v.optional(v.number()),
+    latencyMin: v.optional(v.number()),
+    latencyMax: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+  })
+    .index("by_period", ["period"]),
+
+  // ━━━ Content items ━━━
+  contentItems: defineTable({
+    title: v.string(),
+    content: v.optional(v.string()),
+    type: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  }),
+
+  // ━━━ Bounties ━━━
+  bounties: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    value: v.optional(v.number()),
+    status: v.optional(v.string()),
+    assignee: v.optional(v.string()),
+  }),
+
+  // ━━━ Transactions ━━━
+  transactions: defineTable({
+    type: v.optional(v.string()),
+    amount: v.optional(v.number()),
+    description: v.optional(v.string()),
+    agentId: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  }),
+
+  // ━━━ Interactions ━━━
+  interactions: defineTable({
+    fromAgent: v.optional(v.string()),
+    toAgent: v.optional(v.string()),
+    type: v.optional(v.string()),
+    message: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  }),
 });

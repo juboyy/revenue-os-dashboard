@@ -130,11 +130,11 @@ export default function TasksPage() {
                 <AnimatePresence>
                   {colTasks.map((task) => (
                     <TaskCard
-                      key={task.taskId}
+                      key={task.taskId || task._id}
                       task={task}
                       agentMap={agentMap}
-                      isDragging={draggedTask === task.taskId}
-                      onDragStart={() => handleDragStart(task.taskId)}
+                      isDragging={draggedTask === (task.taskId || task._id)}
+                      onDragStart={() => handleDragStart(task.taskId || task._id)}
                       onDragEnd={handleDragEnd}
                     />
                   ))}
