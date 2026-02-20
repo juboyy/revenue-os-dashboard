@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useDashboardStore } from "../../lib/store";
+import { useAgents } from "../../lib/hooks";
 import Link from "next/link";
 
 // Definição dos departamentos
@@ -104,25 +104,25 @@ const AGENT_SKILLS: Record<string, string[]> = {
 };
 
 export default function TeamStructurePage() {
-  const { agents } = useDashboardStore();
+  const { agents } = useAgents();
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [hoverAgent, setHoverAgent] = useState<string | null>(null);
   
   // Organizar agentes por departamento
-  const departmentAgents = DEPARTMENTS.reduce((acc: Record<string, typeof agents>, dept) => {
+  const departmentAgents = DEPARTMENTS.reduce((acc: Record<string, any[]>, dept) => {
     acc[dept.id] = agents.filter(
-      (agent) => AGENT_DEPARTMENTS[agent.id] === dept.id
-    ).sort((a, b) => 
-      (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.id] || 99)
+      (agent: any) => AGENT_DEPARTMENTS[agent.agentId] === dept.id
+    ).sort((a: any, b: any) => 
+      (AGENT_HIERARCHY[a.agentId] || 99) - (AGENT_HIERARCHY[b.agentId] || 99)
     );
     return acc;
-  }, {} as Record<string, typeof agents>);
+  }, {} as Record<string, any[]>);
   
   // Filtragem de agentes com base no departamento selecionado
   const filteredAgents = selectedDepartment 
     ? departmentAgents[selectedDepartment] 
-    : agents.sort((a, b) => 
-        (AGENT_HIERARCHY[a.id] || 99) - (AGENT_HIERARCHY[b.id] || 99)
+    : [...agents].sort((a: any, b: any) => 
+        (AGENT_HIERARCHY[a.agentId] || 99) - (AGENT_HIERARCHY[b.agentId] || 99)
       );
 
   return (
@@ -175,19 +175,19 @@ export default function TeamStructurePage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAgents.map((agent) => {
+          {filteredAgents.map((agent: any) => {
             const dept = DEPARTMENTS.find(
-              (d) => d.id === AGENT_DEPARTMENTS[agent.id]
+              (d) => d.id === AGENT_DEPARTMENTS[agent.agentId]
             );
             
             return (
               <motion.div
-                key={agent.id}
+                key={agent.agentId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ scale: 1.02 }}
                 className={`glass-card p-4 border ${dept?.borderColor || "border-glass-border"} relative overflow-hidden group`}
-                onMouseEnter={() => setHoverAgent(agent.id)}
+                onMouseEnter={() => setHoverAgent(agent.agentId)}
                 onMouseLeave={() => setHoverAgent(null)}
               >
                 {/* Fundo gradiente */}
@@ -205,7 +205,7 @@ export default function TeamStructurePage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-white font-medium">
-                        {agent.name || agent.id}
+                        {agent.name || agent.agentId}
                       </h3>
                       <span className={`w-2 h-2 rounded-full ${
                         agent.status === "active" ? "bg-accent-green animate-pulse" : 
@@ -213,11 +213,11 @@ export default function TeamStructurePage() {
                       }`} />
                     </div>
                     <p className="text-xs text-gray-500">
-                      {AGENT_ROLES[agent.id] || "Agente"}
+                      {AGENT_ROLES[agent.agentId] || "Agente"}
                     </p>
                   </div>
                   
-                  <Link href={`/spawn?agent=${agent.id}`}>
+                  <Link href={`/spawn?agent=${agent.agentId}`}>
                     <button className="text-xs bg-ocean-700/70 hover:bg-ocean-600 text-gray-300 py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                       Spawn
                     </button>
@@ -225,10 +225,10 @@ export default function TeamStructurePage() {
                 </div>
                 
                 {/* Status atual */}
-                {agent.current_task && (
+                {agent.currentTask && (
                   <div className="mb-3 p-2 rounded bg-ocean-800/50 text-xs">
                     <p className="text-[10px] text-gray-500 uppercase mb-1">Tarefa Atual</p>
-                    <p className="text-accent-blue">{agent.current_task}</p>
+                    <p className="text-accent-blue">{agent.currentTask}</p>
                   </div>
                 )}
                 
@@ -236,7 +236,7 @@ export default function TeamStructurePage() {
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase mb-1.5">Especialidades</p>
                   <div className="flex flex-wrap gap-1">
-                    {(AGENT_SKILLS[agent.id] || []).map((skill) => (
+                    {(AGENT_SKILLS[agent.agentId] || []).map((skill) => (
                       <span 
                         key={skill} 
                         className="text-[10px] px-1.5 py-0.5 rounded bg-ocean-800/70 text-gray-400"
@@ -252,21 +252,21 @@ export default function TeamStructurePage() {
                   <div className="text-[10px]">
                     <p className="text-gray-500">TOKENS</p>
                     <p className="text-accent-purple">
-                      {agent.tokens_today?.toLocaleString() || "0"}
+                      {agent.tokensToday?.toLocaleString() || "0"}
                     </p>
                   </div>
                   <div className="text-[10px]">
                     <p className="text-gray-500">ÚLTIMA ATIVIDADE</p>
                     <p className="text-gray-400">
-                      {agent.last_heartbeat 
-                        ? new Date(agent.last_heartbeat).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                      {agent.lastHeartbeat 
+                        ? new Date(agent.lastHeartbeat).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                         : "N/A"}
                     </p>
                   </div>
                 </div>
                 
                 {/* Conexões (mostradas no hover) */}
-                {hoverAgent === agent.id && (
+                {hoverAgent === agent.agentId && (
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -319,11 +319,11 @@ export default function TeamStructurePage() {
                 
                 {/* Agentes no departamento */}
                 <div className="mt-2 flex -space-x-2">
-                  {deptAgents.slice(0, 5).map((agent) => (
+                  {deptAgents.slice(0, 5).map((agent: any) => (
                     <div 
-                      key={agent.id}
+                      key={agent.agentId}
                       className="w-8 h-8 rounded-full bg-ocean-800 border border-glass-border flex items-center justify-center text-sm"
-                      title={agent.name || agent.id}
+                      title={agent.name || agent.agentId}
                     >
                       {agent.emoji || "🤖"}
                     </div>

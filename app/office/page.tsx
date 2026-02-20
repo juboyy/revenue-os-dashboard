@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useDashboardStore } from "../../lib/store";
+import { useAgents } from "../../lib/hooks";
 
 // Definição das áreas do escritório
 const OFFICE_AREAS = [
@@ -123,7 +123,7 @@ const AGENT_SPRITES: Record<string, { frames: number; frameTime: number; offsetY
 
 // Componente principal
 export default function DigitalOfficePage() {
-  const { agents } = useDashboardStore();
+  const { agents } = useAgents();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [hoveredArea, setHoveredArea] = useState<string | null>(null);
@@ -213,8 +213,8 @@ export default function DigitalOfficePage() {
     const agentPositions: Record<string, { x: number; y: number }> = {};
     
     // Inicializar posições
-    agents.forEach(agent => {
-      const id = agent.id;
+    agents.forEach((agent: any) => {
+      const id = agent.agentId;
       if (!agentPositions[id]) {
         agentPositions[id] = getAgentPosition(id);
       }
@@ -222,8 +222,8 @@ export default function DigitalOfficePage() {
     
     // Frame de animação atual para cada agente
     const agentFrames: Record<string, { frame: number; lastUpdate: number }> = {};
-    agents.forEach(agent => {
-      const id = agent.id;
+    agents.forEach((agent: any) => {
+      const id = agent.agentId;
       agentFrames[id] = {
         frame: 0,
         lastUpdate: 0
@@ -266,8 +266,8 @@ export default function DigitalOfficePage() {
       });
       
       // Desenhar agentes
-      agents.forEach(agent => {
-        const id = agent.id;
+      agents.forEach((agent: any) => {
+        const id = agent.agentId;
         const pos = agentPositions[id];
         if (!pos) return;
         
@@ -275,7 +275,7 @@ export default function DigitalOfficePage() {
         const y = pos.y * canvas.height / 100;
         const status = agent.status || "idle";
         const spriteInfo = AGENT_SPRITES[status];
-        const isSelected = selectedAgent === agent.id;
+        const isSelected = selectedAgent === agent.agentId;
         
         // Atualizar frame de animação
         const frameData = agentFrames[id];
@@ -323,16 +323,16 @@ export default function DigitalOfficePage() {
           ctx.font = "bold 12px 'SF Mono', monospace";
           ctx.fillStyle = "#ffffff";
           ctx.textAlign = "center";
-          ctx.fillText(agent.name || agent.id, x, y + 30);
+          ctx.fillText(agent.name || agent.agentId, x, y + 30);
           
           // Tarefa atual
-          if (agent.current_task) {
+          if (agent.currentTask) {
             ctx.font = "10px 'SF Mono', monospace";
             ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
             ctx.fillText(
-              agent.current_task.length > 25
-                ? agent.current_task.substring(0, 25) + "..."
-                : agent.current_task,
+              agent.currentTask.length > 25
+                ? agent.currentTask.substring(0, 25) + "..."
+                : agent.currentTask,
               x,
               y + 44
             );
@@ -363,8 +363,8 @@ export default function DigitalOfficePage() {
     // Verificar se clicou em um agente
     let clickedAgent = null;
     
-    agents.forEach(agent => {
-      const id = agent.id;
+    agents.forEach((agent: any) => {
+      const id = agent.agentId;
       const pos = getAgentPosition(id);
       if (!pos) return;
       
@@ -375,7 +375,7 @@ export default function DigitalOfficePage() {
       const distance = Math.sqrt(dx * dx + dy * dy);
       
       if (distance < 16) {
-        clickedAgent = agent.id;
+        clickedAgent = agent.agentId;
       }
     });
     
@@ -436,7 +436,7 @@ export default function DigitalOfficePage() {
   
   // Agentar selecionado
   const selectedAgentData = selectedAgent
-    ? agents.find(a => a.id === selectedAgent)
+    ? agents.find((a: any) => a.agentId === selectedAgent)
     : null;
   
   return (
@@ -554,7 +554,7 @@ export default function DigitalOfficePage() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h3 className="text-white font-medium">
-                      {selectedAgentData.name || selectedAgentData.id}
+                      {selectedAgentData.name || selectedAgentData.agentId}
                     </h3>
                     <button
                       onClick={() => setSelectedAgent(null)}
@@ -564,8 +564,8 @@ export default function DigitalOfficePage() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {AGENT_AREAS[selectedAgentData.id] 
-                      ? OFFICE_AREAS.find(a => a.id === AGENT_AREAS[selectedAgentData.id])?.name
+                    {AGENT_AREAS[selectedAgentData.agentId] 
+                      ? OFFICE_AREAS.find(a => a.id === AGENT_AREAS[selectedAgentData.agentId])?.name
                       : "Unknown Area"}
                   </p>
                 </div>
@@ -587,11 +587,11 @@ export default function DigitalOfficePage() {
               </div>
               
               {/* Tarefa atual */}
-              {selectedAgentData.current_task && (
+              {selectedAgentData.currentTask && (
                 <div className="mt-3 p-2 rounded bg-ocean-800/50 text-xs">
                   <p className="text-[10px] text-gray-500 mb-1">TAREFA ATUAL</p>
                   <p className="text-accent-blue">
-                    {selectedAgentData.current_task}
+                    {selectedAgentData.currentTask}
                   </p>
                 </div>
               )}
@@ -607,14 +607,14 @@ export default function DigitalOfficePage() {
                 <div className="bg-ocean-800/50 p-2 rounded">
                   <p className="text-[10px] text-gray-500 mb-1">TOKENS</p>
                   <p className="text-accent-purple font-mono">
-                    {selectedAgentData.tokens_today?.toLocaleString() || "0"}
+                    {selectedAgentData.tokensToday?.toLocaleString() || "0"}
                   </p>
                 </div>
               </div>
               
               {/* Botões de ação */}
               <div className="mt-3 flex items-center gap-2">
-                <Link href={`/spawn?agent=${selectedAgentData.id}`} className="flex-1">
+                <Link href={`/spawn?agent=${selectedAgentData.agentId}`} className="flex-1">
                   <button className="w-full py-1.5 text-xs bg-accent-blue/20 text-accent-blue rounded hover:bg-accent-blue/30 transition-colors">
                     Spawn Agente
                   </button>
@@ -648,7 +648,7 @@ export default function DigitalOfficePage() {
               ></div>
               <span className="text-gray-300">{area.name}</span>
               <span className="text-gray-500 ml-auto">
-                {agents.filter(a => AGENT_AREAS[a.id] === area.id).length}
+                {agents.filter((a: any) => AGENT_AREAS[a.agentId] === area.id).length}
               </span>
             </div>
           ))}
