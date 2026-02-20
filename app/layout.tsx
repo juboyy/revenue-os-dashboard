@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "../components/Sidebar";
+import TopNav from "../components/Sidebar";
 import StoreInitializer from "../components/StoreInitializer";
 import ConvexClientProvider from "../components/ConvexClientProvider";
 
@@ -31,8 +31,8 @@ export default function RootLayout({
         <ConvexClientProvider>
           <StoreInitializer />
           <div className="fixed inset-0 bg-grid-dots pointer-events-none z-0 opacity-40" />
-          <div className="relative z-10 h-screen flex">
-            <Sidebar />
+          <div className="relative z-10 h-screen flex flex-col">
+            <TopNav />
             <main className="flex-1 overflow-y-auto overflow-x-hidden">
               {children}
             </main>

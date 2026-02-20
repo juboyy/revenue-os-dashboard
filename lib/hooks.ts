@@ -148,3 +148,14 @@ export function useMonitoring(days?: number) {
     isLoading: monitoring === undefined,
   };
 }
+
+// ━━━ Cron Jobs ━━━
+
+/** Cron jobs list — reactive */
+export function useCronJobs() {
+  const cronJobs = useQuery(api.cronJobs.list);
+  return {
+    cronJobs: cronJobs ?? [],
+    isLoading: cronJobs === undefined,
+  };
+}
