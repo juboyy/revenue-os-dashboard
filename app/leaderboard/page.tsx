@@ -1,13 +1,13 @@
 "use client";
 
-import { useDashboardStore } from "../../lib/store";
+import { useAgents } from "../../lib/hooks";
 import { getLevelFromXP, LEVEL_TITLES } from "../../lib/types";
 import { motion } from "framer-motion";
 
 const RARITY_COLORS = { common: "#6b7280", rare: "#3b82f6", epic: "#8b5cf6", legendary: "#f59e0b" };
 
 export default function LeaderboardPage() {
-  const { agents } = useDashboardStore();
+  const { agents } = useAgents();
   const sorted = [...agents].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0));
 
   return (
@@ -28,7 +28,7 @@ export default function LeaderboardPage() {
           const isFirst = rank === 0;
           return (
             <motion.div
-              key={agent.id}
+              key={agent._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: rank * 0.1 }}
@@ -57,7 +57,7 @@ export default function LeaderboardPage() {
             const lvl = getLevelFromXP(agent.xp);
             return (
               <motion.div
-                key={agent.id}
+                key={agent._id}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.03 }}
@@ -80,11 +80,11 @@ export default function LeaderboardPage() {
                     <div className="text-[9px] text-gray-600">XP</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-accent-green">{agent.tasks_completed ?? 0}</div>
+                    <div className="text-accent-green">{agent.tasksCompleted ?? 0}</div>
                     <div className="text-[9px] text-gray-600">TAREFAS</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-accent-amber">{agent.streak_days ?? 0}d</div>
+                    <div className="text-accent-amber">{agent.streakDays ?? 0}d</div>
                     <div className="text-[9px] text-gray-600">SEQUÊNCIA</div>
                   </div>
                   <div className="w-24">
@@ -104,7 +104,7 @@ export default function LeaderboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sorted.slice(0, 6).map((agent, i) => (
           <motion.div
-            key={agent.id}
+            key={agent._id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.05 }}
@@ -118,23 +118,26 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              {Object.entries(agent.stats ?? { speed: 0, accuracy: 0, versatility: 0, reliability: 0, creativity: 0 }).map(([stat, val]) => (
-                <div key={stat} className="flex items-center gap-2 text-[11px]">
-                  <span className="text-gray-500 w-20 capitalize">{stat}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-ocean-800 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${val}%` }}
-                      transition={{ duration: 0.8, delay: 0.2 }}
-                      className="h-full rounded-full"
-                      style={{
-                        background: val >= 90 ? "#10b981" : val >= 75 ? "#3b82f6" : val >= 60 ? "#f59e0b" : "#ef4444",
-                      }}
-                    />
+              {(["speed", "accuracy", "versatility", "reliability", "creativity"] as const).map((stat) => {
+                const val = agent[stat] ?? 0;
+                return (
+                  <div key={stat} className="flex items-center gap-2 text-[11px]">
+                    <span className="text-gray-500 w-20 capitalize">{stat}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-ocean-800 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${val}%` }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                        className="h-full rounded-full"
+                        style={{
+                          background: val >= 90 ? "#10b981" : val >= 75 ? "#3b82f6" : val >= 60 ? "#f59e0b" : "#ef4444",
+                        }}
+                      />
+                    </div>
+                    <span className="text-gray-500 font-mono w-6 text-right">{val}</span>
                   </div>
-                  <span className="text-gray-500 font-mono w-6 text-right">{val}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </motion.div>
         ))}

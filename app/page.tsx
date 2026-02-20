@@ -1,6 +1,7 @@
 "use client";
 
 import { useDashboardStore } from "../lib/store";
+import { useAgents, useStandups, useMetrics } from "../lib/hooks";
 import { getLevelFromXP } from "../lib/types";
 import { motion } from "framer-motion";
 
@@ -31,17 +32,17 @@ function formatCost(n: number): string {
 }
 
 export default function HomePage() {
-  const { agents, monitoring } = useDashboardStore();
+  const { monitoring } = useDashboardStore();
+  const { agents } = useAgents();
+  const { metrics } = useMetrics();
 
-  const activeAgents = agents.filter(a => a.status === "active" || a.status === "working").length;
-  const totalTasks = agents.reduce((sum, a) => sum + (a.tasks_completed ?? 0), 0);
   const totalTokens = monitoring?.totals.totalTokens ?? 0;
   const totalCost = monitoring?.totals.totalCost ?? 0;
-  const errorRate = monitoring ? ((monitoring.daily.reduce((s, d) => s + d.errors, 0) / Math.max(monitoring.daily.reduce((s, d) => s + d.messages, 0), 1)) * 100) : 0;
+  const errorRate = monitoring ? ((monitoring.daily.reduce((s: number, d: any) => s + d.errors, 0) / Math.max(monitoring.daily.reduce((s: number, d: any) => s + d.messages, 0), 1)) * 100) : 0;
 
   const kpis = [
-    { label: "Agentes Ativos", value: `${activeAgents}/${agents.length}`, icon: "🟢", accent: "text-accent-green" },
-    { label: "Tarefas Feitas", value: totalTasks.toString(), icon: "✅", accent: "text-accent-blue" },
+    { label: "Agentes Ativos", value: `${metrics.activeAgents}/${metrics.totalAgents}`, icon: "🟢", accent: "text-accent-green" },
+    { label: "Tarefas Feitas", value: metrics.totalTasksCompleted.toString(), icon: "✅", accent: "text-accent-blue" },
     { label: "Tokens Usados", value: formatTokens(totalTokens), icon: "🔤", accent: "text-accent-purple" },
     { label: "Custo Total", value: formatCost(totalCost), icon: "💰", accent: "text-accent-amber" },
     { label: "Latência P95", value: `${monitoring?.latency?.p95Ms ?? "—"}ms`, icon: "⚡", accent: "text-accent-cyan" },
@@ -95,7 +96,7 @@ export default function HomePage() {
               const lvl = getLevelFromXP(agent.xp);
               return (
                 <motion.div
-                  key={agent.id}
+                  key={agent._id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.04, duration: 0.25 }}
@@ -110,7 +111,7 @@ export default function HomePage() {
                       </div>
                       <p className="text-[11px] text-gray-500 truncate">{agent.department}</p>
                       <p className="text-[10px] text-accent-blue/70 truncate mt-0.5 font-mono">
-                        {agent.current_task || "AGUARDANDO_COMANDOS"}
+                        {agent.currentTask || "AGUARDANDO_COMANDOS"}
                       </p>
                     </div>
                   </div>
@@ -175,20 +176,23 @@ export default function HomePage() {
 }
 
 function StandupFeed() {
-  const { standupMessages } = useDashboardStore();
+  const { standups } = useStandups(5);
   return (
     <div className="space-y-2 max-h-40 overflow-y-auto">
-      {standupMessages.slice(-3).map((msg, i) => (
+      {standups.length === 0 && (
+        <p className="text-[11px] text-gray-600 italic">Nenhuma mensagem de standup ainda...</p>
+      )}
+      {standups.slice(-3).map((msg, i) => (
         <motion.div
-          key={i}
+          key={msg._id}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.1 }}
           className="flex gap-2 text-[11px]"
         >
-          <span className="flex-shrink-0">{msg.agent_emoji}</span>
+          <span className="flex-shrink-0">{msg.agentEmoji}</span>
           <div className="min-w-0">
-            <span className="text-accent-blue font-semibold">{msg.agent_name}</span>
+            <span className="text-accent-blue font-semibold">{msg.agentName}</span>
             <p className="text-gray-500 line-clamp-2">{msg.message}</p>
           </div>
         </motion.div>

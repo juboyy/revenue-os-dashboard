@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { useDashboardStore } from "../../lib/store";
+import { useMemoryGraph, useAgents } from "../../lib/hooks";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Memory, MemoryEdge } from "../../lib/types";
 
 const TABS = ["Knowledge Graph", "Timeline", "Agent Brains", "Search"] as const;
 type Tab = typeof TABS[number];
@@ -24,9 +23,10 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export default function MemoryPage() {
   const [tab, setTab] = useState<Tab>("Knowledge Graph");
-  const { memoryGraph, agents } = useDashboardStore();
+  const { graph: memoryGraph, isLoading } = useMemoryGraph();
+  const { agents } = useAgents();
 
-  if (!memoryGraph) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-gray-500 font-mono text-sm animate-pulse">Loading memory data...</div>
@@ -36,7 +36,6 @@ export default function MemoryPage() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -53,7 +52,6 @@ export default function MemoryPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-lg bg-ocean-900/50 border border-glass-border w-fit">
         {TABS.map((t) => (
           <button
@@ -81,34 +79,30 @@ export default function MemoryPage() {
 }
 
 // ━━━ Knowledge Graph Tab (3D via Three.js) ━━━
-function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[]; edges: MemoryEdge[] }; agents: any[] }) {
+function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: any; agents: any[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedNode, setSelectedNode] = useState<Memory | null>(null);
+  const [selectedNode, setSelectedNode] = useState<any | null>(null);
 
-  // 3D positions via force layout in 3D space
   const nodePositions = useMemo(() => {
     const pos: Record<string, { x: number; y: number; z: number }> = {};
     const n = memoryGraph.nodes.length;
-    // Distribute on sphere surface using golden spiral
     const phi = (1 + Math.sqrt(5)) / 2;
-    memoryGraph.nodes.forEach((node, i) => {
+    memoryGraph.nodes.forEach((node: any, i: number) => {
       const theta = 2 * Math.PI * i / phi;
       const y = 1 - (2 * i) / (n - 1 || 1);
       const radiusAtY = Math.sqrt(1 - y * y);
       const spread = 3 + node.relevance * 1.5;
-      pos[node.id] = {
+      pos[node.memoryId] = {
         x: Math.cos(theta) * radiusAtY * spread,
         y: y * spread,
         z: Math.sin(theta) * radiusAtY * spread,
       };
     });
-    // Force simulation in 3D
     for (let iter = 0; iter < 80; iter++) {
-      // Repulsion
       for (const a of memoryGraph.nodes) {
         for (const b of memoryGraph.nodes) {
-          if (a.id >= b.id) continue;
-          const pa = pos[a.id], pb = pos[b.id];
+          if (a.memoryId >= b.memoryId) continue;
+          const pa = pos[a.memoryId], pb = pos[b.memoryId];
           const dx = pb.x - pa.x, dy = pb.y - pa.y, dz = pb.z - pa.z;
           const dist = Math.max(Math.sqrt(dx*dx + dy*dy + dz*dz), 0.1);
           if (dist < 2) {
@@ -122,9 +116,8 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
           }
         }
       }
-      // Attraction along edges
       for (const edge of memoryGraph.edges) {
-        const pa = pos[edge.source], pb = pos[edge.target];
+        const pa = pos[edge.sourceId], pb = pos[edge.targetId];
         if (!pa || !pb) continue;
         const dx = pb.x - pa.x, dy = pb.y - pa.y, dz = pb.z - pa.z;
         const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
@@ -138,21 +131,17 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
           pb.z -= (dz / dist) * force;
         }
       }
-      // Center gravity
       for (const node of memoryGraph.nodes) {
-        const p = pos[node.id];
+        const p = pos[node.memoryId];
         p.x *= 0.995; p.y *= 0.995; p.z *= 0.995;
       }
     }
     return pos;
   }, [memoryGraph]);
 
-  // Three.js scene setup
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    // Dynamic import of Three.js to avoid SSR issues
     let cleanup: (() => void) | null = null;
 
     (async () => {
@@ -162,17 +151,11 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
 
       const width = container.clientWidth;
       const height = 520;
-
-      // Scene
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x060a14);
       scene.fog = new THREE.FogExp2(0x060a14, 0.06);
-
-      // Camera
       const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
       camera.position.set(6, 4, 8);
-
-      // Renderer
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -180,7 +163,6 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       container.appendChild(renderer.domElement);
       renderer.domElement.style.borderRadius = "12px";
 
-      // CSS2D label renderer (overlays WebGL canvas)
       const labelRenderer = new CSS2DRenderer();
       labelRenderer.setSize(width, height);
       labelRenderer.domElement.style.position = "absolute";
@@ -190,7 +172,6 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       container.style.position = "relative";
       container.appendChild(labelRenderer.domElement);
 
-      // Controls
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
@@ -199,46 +180,32 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       controls.minDistance = 3;
       controls.maxDistance = 20;
 
-      // Ambient light
       scene.add(new THREE.AmbientLight(0xffffff, 0.3));
       const pointLight = new THREE.PointLight(0x3b82f6, 1.5, 25);
       pointLight.position.set(5, 5, 5);
       scene.add(pointLight);
 
-      // Grid helper (subtle)
       const grid = new THREE.GridHelper(16, 16, 0x1f2937, 0x111827);
       grid.position.y = -4;
       (grid.material as any).opacity = 0.3;
       (grid.material as any).transparent = true;
       scene.add(grid);
 
-      // Category color map
       const catColors: Record<string, number> = {
-        fact: 0x3b82f6,
-        preference: 0x10b981,
-        decision: 0xf59e0b,
-        pattern: 0x8b5cf6,
+        fact: 0x3b82f6, preference: 0x10b981, decision: 0xf59e0b, pattern: 0x8b5cf6,
       };
 
-      // Node meshes
       const nodeMeshes: any[] = [];
-      const nodeIdMap = new Map<any, Memory>();
+      const nodeIdMap = new Map<any, any>();
 
       for (const node of memoryGraph.nodes) {
-        const p = nodePositions[node.id];
+        const p = nodePositions[node.memoryId];
         if (!p) continue;
-
         const radius = 0.12 + node.relevance * 0.15;
         const color = catColors[node.category] || 0x6b7280;
-
-        // Node sphere
         const geo = new THREE.SphereGeometry(radius, 16, 16);
         const mat = new THREE.MeshStandardMaterial({
-          color,
-          emissive: color,
-          emissiveIntensity: 0.4,
-          roughness: 0.3,
-          metalness: 0.5,
+          color, emissive: color, emissiveIntensity: 0.4, roughness: 0.3, metalness: 0.5,
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(p.x, p.y, p.z);
@@ -246,18 +213,12 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
         nodeMeshes.push(mesh);
         nodeIdMap.set(mesh, node);
 
-        // Glow aura
         const glowGeo = new THREE.SphereGeometry(radius * 2, 16, 16);
-        const glowMat = new THREE.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.08,
-        });
+        const glowMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.08 });
         const glow = new THREE.Mesh(glowGeo, glowMat);
         glow.position.copy(mesh.position);
         scene.add(glow);
 
-        // CSS2D label for this node
         const labelDiv = document.createElement("div");
         labelDiv.textContent = node.content.length > 22 ? node.content.slice(0, 20) + "…" : node.content;
         labelDiv.style.cssText = `
@@ -272,36 +233,29 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
         mesh.add(label);
       }
 
-      // Edges
       for (const edge of memoryGraph.edges) {
-        const from = nodePositions[edge.source];
-        const to = nodePositions[edge.target];
+        const from = nodePositions[edge.sourceId];
+        const to = nodePositions[edge.targetId];
         if (!from || !to) continue;
-
         const points = [
           new THREE.Vector3(from.x, from.y, from.z),
           new THREE.Vector3(to.x, to.y, to.z),
         ];
         const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
         const lineMat = new THREE.LineBasicMaterial({
-          color: 0x6b7280,
-          transparent: true,
-          opacity: 0.15 + edge.weight * 0.15,
+          color: 0x6b7280, transparent: true, opacity: 0.15 + edge.weight * 0.15,
         });
         scene.add(new THREE.Line(lineGeo, lineMat));
       }
 
-      // Particle stars background
       const starGeo = new THREE.BufferGeometry();
       const starVerts = new Float32Array(600).map(() => (Math.random() - 0.5) * 30);
       starGeo.setAttribute("position", new THREE.BufferAttribute(starVerts, 3));
       const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.4 });
       scene.add(new THREE.Points(starGeo, starMat));
 
-      // Raycaster for selection
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
-
       const onClick = (e: MouseEvent) => {
         const rect = renderer.domElement.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -317,25 +271,20 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       };
       renderer.domElement.addEventListener("click", onClick);
 
-      // Animation loop
       let frameId: number;
       const animate = () => {
         frameId = requestAnimationFrame(animate);
         controls.update();
-
-        // Subtle node pulse animation
         const time = Date.now() * 0.001;
         nodeMeshes.forEach((mesh) => {
           const scale = 1 + Math.sin(time * 2 + mesh.position.x) * 0.05;
           mesh.scale.set(scale, scale, scale);
         });
-
         renderer.render(scene, camera);
         labelRenderer.render(scene, camera);
       };
       animate();
 
-      // Resize
       const onResize = () => {
         const w = container.clientWidth;
         camera.aspect = w / height;
@@ -358,16 +307,14 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
     return () => { if (cleanup) cleanup(); };
   }, [memoryGraph, nodePositions]);
 
-  // Agent lookup for detail panel
   const agentLookup = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
-    agents.forEach(a => { m[a.id] = { name: a.name, emoji: a.emoji }; });
+    agents.forEach((a: any) => { m[a.agentId] = { name: a.name, emoji: a.emoji }; });
     return m;
   }, [agents]);
 
   return (
     <div className="space-y-4">
-      {/* Legend */}
       <div className="flex gap-4 text-[10px] text-gray-500">
         {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
           <div key={cat} className="flex items-center gap-1.5">
@@ -379,17 +326,14 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 3D Graph Container */}
         <div className="lg:col-span-2 glass-card p-4 overflow-hidden">
           <div ref={containerRef} className="w-full h-[520px] rounded-lg" />
         </div>
-
-        {/* Selected Node Detail */}
         <div className="glass-card p-5 space-y-4">
           <h3 className="text-xs uppercase tracking-widest text-gray-500 font-mono">Memory Detail</h3>
           <AnimatePresence mode="wait">
             {selectedNode ? (
-              <motion.div key={selectedNode.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key={selectedNode.memoryId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{CATEGORY_ICONS[selectedNode.category]}</span>
                   <span className="text-[10px] uppercase tracking-widest font-mono px-2 py-0.5 rounded"
@@ -401,7 +345,7 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
                 <div className="space-y-1 text-[11px] text-gray-500 font-mono">
                   <div className="flex justify-between">
                     <span>Agent</span>
-                    <span className="text-white">{agentLookup[selectedNode.agent_id]?.emoji} {agentLookup[selectedNode.agent_id]?.name || selectedNode.agent_id}</span>
+                    <span className="text-white">{agentLookup[selectedNode.agentId]?.emoji} {agentLookup[selectedNode.agentId]?.name || selectedNode.agentId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Relevance</span>
@@ -409,23 +353,22 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
                   </div>
                   <div className="flex justify-between">
                     <span>Retrievals</span>
-                    <span className="text-accent-blue">{selectedNode.retrieval_count}×</span>
+                    <span className="text-accent-blue">{selectedNode.retrievalCount}×</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Created</span>
-                    <span>{new Date(selectedNode.created_at).toLocaleDateString()}</span>
+                    <span>{new Date(selectedNode._creationTime).toLocaleDateString()}</span>
                   </div>
                 </div>
 
-                {/* Connected memories */}
                 <div className="pt-3 border-t border-glass-border">
                   <h4 className="text-[10px] uppercase tracking-widest text-gray-600 mb-2">Connected</h4>
                   <div className="space-y-1.5">
                     {memoryGraph.edges
-                      .filter(e => e.source === selectedNode.id || e.target === selectedNode.id)
-                      .map((edge, i) => {
-                        const otherId = edge.source === selectedNode.id ? edge.target : edge.source;
-                        const other = memoryGraph.nodes.find(n => n.id === otherId);
+                      .filter((e: any) => e.sourceId === selectedNode.memoryId || e.targetId === selectedNode.memoryId)
+                      .map((edge: any, i: number) => {
+                        const otherId = edge.sourceId === selectedNode.memoryId ? edge.targetId : edge.sourceId;
+                        const other = memoryGraph.nodes.find((n: any) => n.memoryId === otherId);
                         if (!other) return null;
                         return (
                           <div key={i} className="text-[10px] p-2 rounded-md bg-ocean-900/50 border border-glass-border cursor-pointer hover:border-accent-purple/30 transition-colors"
@@ -456,14 +399,14 @@ function KnowledgeGraphTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memo
 }
 
 // ━━━ Timeline Tab ━━━
-function TimelineTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; agents: any[] }) {
+function TimelineTab({ memoryGraph, agents }: { memoryGraph: any; agents: any[] }) {
   const sorted = useMemo(
-    () => [...memoryGraph.nodes].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    () => [...memoryGraph.nodes].sort((a: any, b: any) => (b._creationTime ?? 0) - (a._creationTime ?? 0)),
     [memoryGraph]
   );
   const agentLookup = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
-    agents.forEach(a => { m[a.id] = { name: a.name, emoji: a.emoji }; });
+    agents.forEach((a: any) => { m[a.agentId] = { name: a.name, emoji: a.emoji }; });
     return m;
   }, [agents]);
 
@@ -473,12 +416,12 @@ function TimelineTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }
       <div className="relative">
         <div className="absolute left-4 top-0 bottom-0 w-px bg-glass-border" />
         <div className="space-y-4">
-          {sorted.map((mem, i) => {
-            const agent = agentLookup[mem.agent_id];
-            const freshness = 1 - Math.min((Date.now() - new Date(mem.created_at).getTime()) / (7 * 86400000), 1);
+          {sorted.map((mem: any, i: number) => {
+            const agent = agentLookup[mem.agentId];
+            const freshness = 1 - Math.min((Date.now() - (mem._creationTime ?? Date.now())) / (7 * 86400000), 1);
             return (
               <motion.div
-                key={mem.id}
+                key={mem._id}
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.03 }}
@@ -489,19 +432,19 @@ function TimelineTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }
                 <div className="flex-1 p-3 rounded-lg bg-ocean-900/50 border border-glass-border hover:border-accent-purple/20 transition-colors">
                   <div className="flex items-center gap-2 mb-1">
                     <span>{agent?.emoji || "🤖"}</span>
-                    <span className="text-xs text-accent-blue font-medium">{agent?.name || mem.agent_id}</span>
+                    <span className="text-xs text-accent-blue font-medium">{agent?.name || mem.agentId}</span>
                     <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded"
                       style={{ background: `${CATEGORY_COLORS[mem.category]}15`, color: CATEGORY_COLORS[mem.category] }}>
                       {mem.category}
                     </span>
                     <span className="ml-auto text-[10px] text-gray-600 font-mono">
-                      {new Date(mem.created_at).toLocaleString()}
+                      {new Date(mem._creationTime).toLocaleString()}
                     </span>
                   </div>
                   <p className="text-sm text-gray-300">{mem.content}</p>
                   <div className="flex gap-3 mt-2 text-[10px] text-gray-600 font-mono">
                     <span>relevance: {(mem.relevance * 100).toFixed(0)}%</span>
-                    <span>retrieved: {mem.retrieval_count}×</span>
+                    <span>retrieved: {mem.retrievalCount}×</span>
                     <span style={{ color: freshness > 0.7 ? "#10b981" : freshness > 0.3 ? "#f59e0b" : "#6b7280" }}>
                       freshness: {(freshness * 100).toFixed(0)}%
                     </span>
@@ -517,29 +460,29 @@ function TimelineTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }
 }
 
 // ━━━ Agent Brains Tab ━━━
-function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; agents: any[] }) {
+function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: any; agents: any[] }) {
   const agentMemoryMap = useMemo(() => {
-    const m: Record<string, Memory[]> = {};
+    const m: Record<string, any[]> = {};
     for (const mem of memoryGraph.nodes) {
-      if (!m[mem.agent_id]) m[mem.agent_id] = [];
-      m[mem.agent_id].push(mem);
+      if (!m[mem.agentId]) m[mem.agentId] = [];
+      m[mem.agentId].push(mem);
     }
     return m;
   }, [memoryGraph]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {agents.map((agent, i) => {
-        const memories = agentMemoryMap[agent.id] || [];
-        const categories = memories.reduce((acc: Record<string, number>, m: Memory) => {
+      {agents.map((agent: any, i: number) => {
+        const memories = agentMemoryMap[agent.agentId] || [];
+        const categories = memories.reduce((acc: Record<string, number>, m: any) => {
           acc[m.category] = (acc[m.category] || 0) + 1;
           return acc;
         }, {});
-        const totalRetrievals = memories.reduce((s: number, m: Memory) => s + m.retrieval_count, 0);
+        const totalRetrievals = memories.reduce((s: number, m: any) => s + m.retrievalCount, 0);
 
         return (
           <motion.div
-            key={agent.id}
+            key={agent._id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.05 }}
@@ -553,7 +496,6 @@ function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[
               </div>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="p-2 rounded-lg bg-ocean-900/50">
                 <div className="text-lg font-bold text-accent-purple">{memories.length}</div>
@@ -561,7 +503,7 @@ function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[
               </div>
               <div className="p-2 rounded-lg bg-ocean-900/50">
                 <div className="text-lg font-bold text-accent-blue">{totalRetrievals}</div>
-                <div className="text-[9px] text-gray-600 uppercase">retrivals</div>
+                <div className="text-[9px] text-gray-600 uppercase">retrievals</div>
               </div>
               <div className="p-2 rounded-lg bg-ocean-900/50">
                 <div className="text-lg font-bold text-accent-green">{Object.keys(categories).length}</div>
@@ -569,7 +511,6 @@ function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[
               </div>
             </div>
 
-            {/* Category breakdown */}
             <div className="space-y-1.5">
               {Object.entries(categories).map(([cat, count]) => (
                 <div key={cat} className="flex items-center gap-2 text-[11px]">
@@ -579,14 +520,13 @@ function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[
                   <div className="w-16 h-1 rounded-full bg-ocean-800 overflow-hidden">
                     <div className="h-full rounded-full" style={{
                       background: CATEGORY_COLORS[cat],
-                      width: `${(count / memories.length) * 100}%`,
+                      width: `${((count as number) / memories.length) * 100}%`,
                     }} />
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Latest memory */}
             {memories[0] && (
               <div className="pt-2 border-t border-glass-border">
                 <p className="text-[10px] text-gray-600 uppercase mb-1">Latest Memory</p>
@@ -601,11 +541,11 @@ function AgentBrainsTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[
 }
 
 // ━━━ Search Tab ━━━
-function SearchTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; agents: any[] }) {
+function SearchTab({ memoryGraph, agents }: { memoryGraph: any; agents: any[] }) {
   const [query, setQuery] = useState("");
   const agentLookup = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
-    agents.forEach(a => { m[a.id] = { name: a.name, emoji: a.emoji }; });
+    agents.forEach((a: any) => { m[a.agentId] = { name: a.name, emoji: a.emoji }; });
     return m;
   }, [agents]);
 
@@ -613,13 +553,12 @@ function SearchTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; 
     if (!query.trim()) return memoryGraph.nodes;
     const q = query.toLowerCase();
     return memoryGraph.nodes
-      .filter(m => m.content.toLowerCase().includes(q) || m.category.includes(q) || m.agent_id.includes(q))
-      .sort((a, b) => b.relevance - a.relevance);
+      .filter((m: any) => m.content.toLowerCase().includes(q) || m.category.includes(q) || m.agentId.includes(q))
+      .sort((a: any, b: any) => b.relevance - a.relevance);
   }, [query, memoryGraph]);
 
   return (
     <div className="space-y-4">
-      {/* Search bar */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-3">
           <span className="text-lg">🔍</span>
@@ -634,13 +573,12 @@ function SearchTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; 
         </div>
       </div>
 
-      {/* Results */}
       <div className="space-y-2">
-        {results.map((mem, i) => {
-          const agent = agentLookup[mem.agent_id];
+        {results.map((mem: any, i: number) => {
+          const agent = agentLookup[mem.agentId];
           return (
             <motion.div
-              key={mem.id}
+              key={mem._id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
@@ -648,7 +586,7 @@ function SearchTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; 
             >
               <div className="flex items-center gap-2 mb-1">
                 <span>{agent?.emoji || "🤖"}</span>
-                <span className="text-xs text-gray-400">{agent?.name || mem.agent_id}</span>
+                <span className="text-xs text-gray-400">{agent?.name || mem.agentId}</span>
                 <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded"
                   style={{ background: `${CATEGORY_COLORS[mem.category]}15`, color: CATEGORY_COLORS[mem.category] }}>
                   {mem.category}
@@ -657,8 +595,8 @@ function SearchTab({ memoryGraph, agents }: { memoryGraph: { nodes: Memory[] }; 
               </div>
               <p className="text-sm text-gray-300">{mem.content}</p>
               <div className="flex gap-3 mt-1.5 text-[10px] text-gray-600 font-mono">
-                <span>retrieved {mem.retrieval_count}×</span>
-                <span>{new Date(mem.created_at).toLocaleDateString()}</span>
+                <span>retrieved {mem.retrievalCount}×</span>
+                <span>{new Date(mem._creationTime).toLocaleDateString()}</span>
               </div>
             </motion.div>
           );

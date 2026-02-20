@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
-import { useDashboardStore } from "../../lib/store";
+import { useAgents } from "../../lib/hooks";
 import { getLevelFromXP } from "../../lib/types";
-import type { AgentRecord, AgentStats } from "../../lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DEPT_COLORS: Record<string, string> = {
@@ -19,11 +18,11 @@ const DEPT_COLORS: Record<string, string> = {
 };
 
 const RARITY_COLORS: Record<string, string> = { common: "#6b7280", rare: "#3b82f6", epic: "#8b5cf6", legendary: "#f59e0b" };
-const STAT_LABELS: (keyof AgentStats)[] = ["speed", "accuracy", "versatility", "reliability", "creativity"];
+const STAT_LABELS = ["speed", "accuracy", "versatility", "reliability", "creativity"] as const;
 const STAT_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
 export default function OrgChartPage() {
-  const { agents } = useDashboardStore();
+  const { agents } = useAgents();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const captain = agents.find(a => a.department === "OS Captain");
   const crew = agents.filter(a => a.department !== "OS Captain");
@@ -35,7 +34,7 @@ export default function OrgChartPage() {
     });
     return groups;
   }, [crew]);
-  const selectedAgent = agents.find(a => a.id === selectedId) || null;
+  const selectedAgent = agents.find(a => a.agentId === selectedId) || null;
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
@@ -47,12 +46,11 @@ export default function OrgChartPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Tree (left 2/3) */}
         <div className="lg:col-span-2 flex flex-col items-center space-y-6">
           {captain && (
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-              <OrgNodeCard agent={captain} isRoot selected={selectedId === captain.id}
-                onClick={() => setSelectedId(selectedId === captain.id ? null : captain.id)} />
+              <OrgNodeCard agent={captain} isRoot selected={selectedId === captain.agentId}
+                onClick={() => setSelectedId(selectedId === captain.agentId ? null : captain.agentId)} />
             </motion.div>
           )}
           <div className="w-px h-8 bg-gradient-to-b from-accent-amber/50 to-glass-border" />
@@ -67,8 +65,8 @@ export default function OrgChartPage() {
                   <div className="w-px h-4 mb-2" style={{ background: `${color}40` }} />
                   <div className="space-y-2">
                     {deptAgents.map(agent => (
-                      <OrgNodeCard key={agent.id} agent={agent} selected={selectedId === agent.id}
-                        onClick={() => setSelectedId(selectedId === agent.id ? null : agent.id)} />
+                      <OrgNodeCard key={agent._id} agent={agent} selected={selectedId === agent.agentId}
+                        onClick={() => setSelectedId(selectedId === agent.agentId ? null : agent.agentId)} />
                     ))}
                   </div>
                 </motion.div>
@@ -77,11 +75,10 @@ export default function OrgChartPage() {
           </div>
         </div>
 
-        {/* Detail Panel (right 1/3) */}
         <div className="glass-card p-4 overflow-y-auto max-h-[80vh]">
           <AnimatePresence mode="wait">
             {selectedAgent ? (
-              <AgentDeepView key={selectedAgent.id} agent={selectedAgent} />
+              <AgentDeepView key={selectedAgent._id} agent={selectedAgent} />
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 space-y-2">
                 <span className="text-4xl block">👈</span>
@@ -117,7 +114,7 @@ function OrgNodeCard({ agent, isRoot, selected, onClick }: { agent: any; isRoot?
         <span className="text-accent-blue">{agent.xp} XP</span>
       </div>
       <div className="xp-bar mt-1.5"><div className="xp-bar-fill" style={{ width: `${lvl.progress}%` }} /></div>
-      {agent.current_task && <p className="text-[9px] text-gray-600 mt-1.5 truncate font-mono">{agent.current_task}</p>}
+      {agent.currentTask && <p className="text-[9px] text-gray-600 mt-1.5 truncate font-mono">{agent.currentTask}</p>}
     </div>
   );
 }
@@ -125,7 +122,7 @@ function OrgNodeCard({ agent, isRoot, selected, onClick }: { agent: any; isRoot?
 // ══════════════════════════════════════════════════════════
 // RADAR CHART — Canvas-drawn spider chart for agent stats
 // ══════════════════════════════════════════════════════════
-function RadarChart({ stats, color }: { stats: AgentStats; color: string }) {
+function RadarChart({ stats, color }: { stats: Record<string, number>; color: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -137,11 +134,10 @@ function RadarChart({ stats, color }: { stats: AgentStats; color: string }) {
     canvas.height = 200 * dpr;
     ctx.scale(dpr, dpr);
     const cx = 100, cy = 100, maxR = 70;
-    const values = STAT_LABELS.map(k => stats[k]);
+    const values = STAT_LABELS.map(k => stats[k] ?? 0);
     const n = values.length;
     const angleStep = (2 * Math.PI) / n;
 
-    // Grid circles
     for (let r = 1; r <= 4; r++) {
       ctx.beginPath();
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
@@ -157,7 +153,6 @@ function RadarChart({ stats, color }: { stats: AgentStats; color: string }) {
       ctx.stroke();
     }
 
-    // Axis lines + labels
     for (let i = 0; i < n; i++) {
       const angle = -Math.PI / 2 + i * angleStep;
       const lx = cx + Math.cos(angle) * (maxR + 16);
@@ -167,19 +162,16 @@ function RadarChart({ stats, color }: { stats: AgentStats; color: string }) {
       ctx.lineTo(cx + Math.cos(angle) * maxR, cy + Math.sin(angle) * maxR);
       ctx.strokeStyle = "rgba(255,255,255,0.08)";
       ctx.stroke();
-      // Label
       ctx.font = "bold 8px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = STAT_COLORS[i];
       ctx.fillText(STAT_LABELS[i].toUpperCase(), lx, ly);
-      // Value
       ctx.fillStyle = "rgba(255,255,255,0.5)";
       ctx.font = "bold 7px monospace";
       ctx.fillText(`${values[i]}`, lx, ly + 10);
     }
 
-    // Data polygon
     ctx.beginPath();
     for (let i = 0; i <= n; i++) {
       const idx = i % n;
@@ -196,7 +188,6 @@ function RadarChart({ stats, color }: { stats: AgentStats; color: string }) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Data points
     for (let i = 0; i < n; i++) {
       const angle = -Math.PI / 2 + i * angleStep;
       const r = (values[i] / 100) * maxR;
@@ -216,19 +207,24 @@ function RadarChart({ stats, color }: { stats: AgentStats; color: string }) {
 // ══════════════════════════════════════════════════════════
 // DEEP AGENT VIEW — full profile with radar, KPIs, lifecycle
 // ══════════════════════════════════════════════════════════
-function AgentDeepView({ agent }: { agent: AgentRecord }) {
+function AgentDeepView({ agent }: { agent: any }) {
   const lvl = getLevelFromXP(agent.xp);
   const color = DEPT_COLORS[agent.department] || "#6b7280";
   const isActive = agent.status === "active" || agent.status === "working";
   const statusLabel = agent.status === "active" ? "Ativo" : agent.status === "working" ? "Trabalhando" : agent.status === "error" ? "Erro" : agent.status === "sleeping" ? "Dormindo" : "Ocioso";
-  const safeStats = agent.stats ?? { speed: 0, accuracy: 0, versatility: 0, reliability: 0, creativity: 0 };
+  const safeStats: Record<string, number> = {
+    speed: agent.speed ?? 0,
+    accuracy: agent.accuracy ?? 0,
+    versatility: agent.versatility ?? 0,
+    reliability: agent.reliability ?? 0,
+    creativity: agent.creativity ?? 0,
+  };
   const avgStat = Math.round(Object.values(safeStats).reduce((s, v) => s + v, 0) / 5);
   const perfTier = avgStat >= 85 ? "S" : avgStat >= 70 ? "A" : avgStat >= 55 ? "B" : avgStat >= 40 ? "C" : "D";
   const tierColor = perfTier === "S" ? "#f59e0b" : perfTier === "A" ? "#10b981" : perfTier === "B" ? "#3b82f6" : perfTier === "C" ? "#f97316" : "#ef4444";
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
-      {/* Header */}
       <div className="text-center">
         <div className="relative inline-block">
           <span className="text-5xl">{agent.emoji}</span>
@@ -245,7 +241,6 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
 
       {agent.soul && <p className="text-[10px] text-gray-400 italic border-l-2 border-gray-800 pl-2 text-center">&ldquo;{agent.soul}&rdquo;</p>}
 
-      {/* XP */}
       <div>
         <div className="flex justify-between text-[8px] text-gray-600 mb-0.5"><span>{agent.xp} XP</span><span>{lvl.nextXP}</span></div>
         <div className="h-2 rounded-full bg-ocean-800 overflow-hidden">
@@ -254,21 +249,19 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
         </div>
       </div>
 
-      {/* Radar Chart */}
       <div>
         <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1 text-center">Radar de Performance</h4>
         <RadarChart stats={safeStats} color={color} />
       </div>
 
-      {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Tarefas", value: agent.tasks_completed ?? 0, c: "text-green-400", icon: "✅" },
-          { label: "Sequência", value: `${agent.streak_days ?? 0}d`, c: "text-amber-400", icon: "🔥" },
-          { label: "Tokens", value: `${((agent.tokens_today ?? 0) / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
-          { label: "Bloqueado", value: agent.tasks_blocked ?? 0, c: "text-red-400", icon: "🚫" },
+          { label: "Tarefas", value: agent.tasksCompleted ?? 0, c: "text-green-400", icon: "✅" },
+          { label: "Sequência", value: `${agent.streakDays ?? 0}d`, c: "text-amber-400", icon: "🔥" },
+          { label: "Tokens", value: `${((agent.tokensToday ?? 0) / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
+          { label: "Bloqueado", value: agent.tasksBlocked ?? 0, c: "text-red-400", icon: "🚫" },
           { label: "Média Stats", value: avgStat, c: "text-purple-400", icon: "📊" },
-          { label: "Pendente", value: agent.tasks_pending ?? 0, c: "text-yellow-400", icon: "⏳" },
+          { label: "Pendente", value: agent.tasksPending ?? 0, c: "text-yellow-400", icon: "⏳" },
         ].map(k => (
           <div key={k.label} className="p-2.5 rounded-lg bg-ocean-900/50 text-center">
             <div className="text-sm mb-0.5">{k.icon}</div>
@@ -278,32 +271,13 @@ function AgentDeepView({ agent }: { agent: AgentRecord }) {
         ))}
       </div>
 
-      {/* Achievements */}
-      {(agent.achievements ?? []).length > 0 && (
-        <div>
-          <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas ({(agent.achievements ?? []).length})</h4>
-          <div className="grid grid-cols-4 gap-1.5">
-            {(agent.achievements ?? []).map(a => (
-              <div key={a.id} title={`${a.name}: ${a.description}`}
-                className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg"
-                style={{ background: `${RARITY_COLORS[a.rarity]}10`, border: `1px solid ${RARITY_COLORS[a.rarity]}25` }}>
-                <span className="text-lg">{a.icon}</span>
-                <span className="text-[6px] text-gray-500 truncate w-full text-center">{a.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Current Task */}
-      {agent.current_task && (
+      {agent.currentTask && (
         <div className="border-t border-glass-border pt-2">
           <h4 className="text-[8px] uppercase text-gray-600 font-mono mb-0.5">Tarefa Atual</h4>
-          <p className="text-[10px] text-gray-300 font-mono">{agent.current_task}</p>
+          <p className="text-[10px] text-gray-300 font-mono">{agent.currentTask}</p>
         </div>
       )}
 
-      {/* Lifecycle Actions */}
       <div className="border-t border-glass-border pt-3 space-y-2">
         <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Ações do Ciclo de Vida</h4>
         <div className="grid grid-cols-3 gap-1.5">

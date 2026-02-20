@@ -1,8 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useDashboardStore } from "../../lib/store";
+import { useAgents, useTasks } from "../../lib/hooks";
 import { getLevelFromXP } from "../../lib/types";
-import type { AgentRecord } from "../../lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -879,11 +878,12 @@ function createParticles(count: number): Particle[] {
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════
 export default function WorldPage() {
-  const { agents, tasks } = useDashboardStore();
+  const { agents } = useAgents();
+  const { tasks } = useTasks();
   const pathname = usePathname();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<any | null>(null);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const frameRef = useRef(0);
@@ -897,11 +897,11 @@ export default function WorldPage() {
   useEffect(() => {
     const pos = agentPosRef.current;
     agents.forEach((agent, i) => {
-      if (pos[agent.id]) return;
+      if (pos[agent.agentId]) return;
       const room = ROOMS.find(r => r.id === agent.room) || ROOMS[i % ROOMS.length];
       const cx = (room.x + room.w / 2) * T;
       const cy = (room.y + room.h / 2) * T + 20;
-      pos[agent.id] = {
+      pos[agent.agentId] = {
         x: cx + (Math.random() - 0.5) * room.w * T * 0.3,
         y: cy + (Math.random() - 0.5) * room.h * T * 0.3,
         tx: cx, ty: cy, speed: 0.4 + Math.random() * 0.3,
@@ -936,13 +936,13 @@ export default function WorldPage() {
       const pos = agentPosRef.current;
       for (let i = 0; i < activeAgents.length; i++) {
         for (let j = i + 1; j < activeAgents.length; j++) {
-          const pa = pos[activeAgents[i].id], pb = pos[activeAgents[j].id];
+          const pa = pos[activeAgents[i].agentId], pb = pos[activeAgents[j].agentId];
           if (!pa || !pb) continue;
           const d = Math.sqrt((pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2);
           if (d < 70 && !pa.moving && !pb.moving && Math.random() < 0.15) {
             const inter = INTERACTIONS[Math.floor(Math.random() * INTERACTIONS.length)];
-            interactionsRef.current[activeAgents[i].id] = { icon: inter.icon, ttl: 120 };
-            interactionsRef.current[activeAgents[j].id] = { icon: inter.icon, ttl: 120 };
+            interactionsRef.current[activeAgents[i].agentId] = { icon: inter.icon, ttl: 120 };
+            interactionsRef.current[activeAgents[j].agentId] = { icon: inter.icon, ttl: 120 };
           }
         }
       }
@@ -988,7 +988,7 @@ export default function WorldPage() {
       const pos = agentPosRef.current;
       const roomCounts: Record<string, number> = {};
       agents.forEach(a => {
-        const p = pos[a.id];
+        const p = pos[a.agentId];
         if (p) roomCounts[p.currentRoom] = (roomCounts[p.currentRoom] || 0) + 1;
       });
 
@@ -1019,24 +1019,24 @@ export default function WorldPage() {
       }
 
       // Agents
-      const sortedAgents = [...agents].sort((a, b) => (pos[a.id]?.y || 0) - (pos[b.id]?.y || 0));
+      const sortedAgents = [...agents].sort((a, b) => (pos[a.agentId]?.y || 0) - (pos[b.agentId]?.y || 0));
       for (const agent of sortedAgents) {
-        const p = pos[agent.id];
+        const p = pos[agent.agentId];
         if (!p) continue;
         if (agent.status !== "sleeping") {
           if (p.wait > 0) { p.wait--; p.moving = false; }
           else {
             const dx = p.tx - p.x, dy = p.ty - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 3) { pickTarget(agent.id, agent.room); p.moving = false; }
+            if (dist < 3) { pickTarget(agent.agentId, agent.room); p.moving = false; }
             else { p.x += (dx / dist) * p.speed; p.y += (dy / dist) * p.speed; p.moving = true; }
           }
         }
         const vis = AGENT_VISUALS[agents.indexOf(agent) % AGENT_VISUALS.length];
         const st = STATUS_CFG[agent.status] || STATUS_CFG.idle;
-        const inter = interactionsRef.current[agent.id];
+        const inter = interactionsRef.current[agent.agentId];
         drawCharacter(ctx, p.x, p.y, vis, st.color, frame,
-          selectedAgent?.id === agent.id, hoveredAgent === agent.id,
+          selectedAgent?.agentId === agent.agentId, hoveredAgent === agent.agentId,
           agent.name.split(" ")[0], agent.emoji, st.label, p.moving, inter?.icon || null);
       }
 
@@ -1059,7 +1059,7 @@ export default function WorldPage() {
     const mx = (e.clientX - rect.left) * sx, my = (e.clientY - rect.top) * sy;
     const pos = agentPosRef.current;
     for (const agent of agents) {
-      const p = pos[agent.id];
+      const p = pos[agent.agentId];
       if (!p) continue;
       if (Math.abs(mx - p.x) < 30 && Math.abs(my - p.y) < 45) return agent;
     }
@@ -1073,7 +1073,7 @@ export default function WorldPage() {
 
   const handleMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const agent = getAgentAt(e);
-    setHoveredAgent(agent?.id || null);
+    setHoveredAgent(agent?.agentId || null);
     setMousePos({ x: e.clientX, y: e.clientY });
     if (canvasRef.current) canvasRef.current.style.cursor = agent ? "pointer" : "default";
   }, [getAgentAt]);
@@ -1118,7 +1118,7 @@ export default function WorldPage() {
       {/* ═══ HOVER TOOLTIP ═══ */}
       <AnimatePresence>
         {hoveredAgent && !selectedAgent && (() => {
-          const agent = agents.find(a => a.id === hoveredAgent);
+          const agent = agents.find(a => a.agentId === hoveredAgent);
           if (!agent) return null;
           const lvl = getLevelFromXP(agent.xp);
           const st = STATUS_CFG[agent.status] || STATUS_CFG.idle;
@@ -1144,15 +1144,15 @@ export default function WorldPage() {
                   <span>•</span>
                   <span>{agent.xp ?? 0} XP</span>
                   <span>•</span>
-                  <span>🔥 {agent.streak_days ?? 0}d</span>
+                  <span>🔥 {agent.streakDays ?? 0}d</span>
                 </div>
                 {/* XP bar */}
                 <div className="h-1 rounded-full bg-gray-200 overflow-hidden mb-1">
                   <div className="h-full rounded-full bg-gradient-to-r from-purple-400 to-blue-400" style={{ width: `${lvl.progress}%` }} />
                 </div>
-                {agent.current_task && (
+                {agent.currentTask && (
                   <div className="text-[9px] text-gray-500 mt-1 border-t border-gray-100 pt-1">
-                    📋 {agent.current_task}
+                    📋 {agent.currentTask}
                   </div>
                 )}
                 <div className="text-[8px] text-gray-400 mt-1 italic">Clique para detalhes</div>
@@ -1182,7 +1182,7 @@ export default function WorldPage() {
 // ══════════════════════════════════════════════════════════
 const RARITY_COLORS: Record<string, string> = { common: "#6b7280", rare: "#3b82f6", epic: "#8b5cf6", legendary: "#f59e0b" };
 
-function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () => void }) {
+function AgentInspector({ agent, onClose }: { agent: any; onClose: () => void }) {
   const lvl = getLevelFromXP(agent.xp);
   const st = STATUS_CFG[agent.status] || STATUS_CFG.idle;
   const vis = AGENT_VISUALS[0]; // fallback
@@ -1222,10 +1222,10 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Tarefas", value: agent.tasks_completed ?? 0, c: "text-green-400", icon: "✅" },
-          { label: "Sequência", value: `${agent.streak_days ?? 0}d`, c: "text-amber-400", icon: "🔥" },
-          { label: "Tokens", value: `${((agent.tokens_today ?? 0) / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
-          { label: "Bloqueado", value: agent.tasks_blocked ?? 0, c: "text-red-400", icon: "🚫" },
+          { label: "Tarefas", value: agent.tasksCompleted ?? 0, c: "text-green-400", icon: "✅" },
+          { label: "Sequência", value: `${agent.streakDays ?? 0}d`, c: "text-amber-400", icon: "🔥" },
+          { label: "Tokens", value: `${((agent.tokensToday ?? 0) / 1000).toFixed(1)}k`, c: "text-blue-400", icon: "⚡" },
+          { label: "Bloqueado", value: agent.tasksBlocked ?? 0, c: "text-red-400", icon: "🚫" },
         ].map(k => (
           <div key={k.label} className="p-2 rounded-lg bg-ocean-900/50 text-center">
             <div className="text-sm">{k.icon}</div>
@@ -1238,7 +1238,7 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       {/* Stats Bars */}
       <div className="space-y-1.5">
         <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Estatísticas</h4>
-        {Object.entries(agent.stats ?? { speed: 0, accuracy: 0, versatility: 0, reliability: 0, creativity: 0 }).map(([stat, val]) => (
+        {Object.entries({ speed: agent.speed ?? 0, accuracy: agent.accuracy ?? 0, versatility: agent.versatility ?? 0, reliability: agent.reliability ?? 0, creativity: agent.creativity ?? 0 } as Record<string, number>).map(([stat, val]) => (
           <div key={stat} className="flex items-center gap-1.5">
             <span className="text-gray-500 w-16 capitalize text-[9px]">{stat}</span>
             <div className="flex-1 h-1.5 rounded-full bg-ocean-800 overflow-hidden">
@@ -1259,8 +1259,8 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
         <div>
           <h4 className="text-[8px] uppercase tracking-widest text-gray-600 font-mono mb-1">Conquistas</h4>
           <div className="flex flex-wrap gap-1">
-            {(agent.achievements ?? []).map(a => (
-              <span key={a.id} title={`${a.name}: ${a.description}`}
+            {(agent.achievements ?? []).map((a: any) => (
+              <span key={a.id ?? a.name} title={`${a.name}: ${a.description}`}
                 className="text-sm p-1 rounded border"
                 style={{ borderColor: `${RARITY_COLORS[a.rarity]}30`, background: `${RARITY_COLORS[a.rarity]}08` }}>{a.icon}</span>
             ))}
@@ -1269,10 +1269,10 @@ function AgentInspector({ agent, onClose }: { agent: AgentRecord; onClose: () =>
       )}
 
       {/* Current Task */}
-      {agent.current_task && (
+      {agent.currentTask && (
         <div className="border-t border-glass-border pt-2">
           <h4 className="text-[8px] uppercase text-gray-600 font-mono mb-0.5">Tarefa Atual</h4>
-          <p className="text-[10px] text-gray-300 font-mono">{agent.current_task}</p>
+          <p className="text-[10px] text-gray-300 font-mono">{agent.currentTask}</p>
         </div>
       )}
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useAgent } from "../../../lib/hooks";
+import { useAgent, useAgentEvents } from "../../../lib/hooks";
 import type { AgentStatus } from "../../../lib/types";
+import { motion } from "framer-motion";
 
 /* ─── Status badge ─── */
 function StatusBadge({ status }: { status: AgentStatus }) {
@@ -33,25 +34,22 @@ function InfoRow({ label, value, icon }: { label: string; value: string | number
   );
 }
 
-/* ─── Session log (mock) ─── */
-function SessionLog() {
-  const entries = [
-    { time: "23:35", msg: "Task completed: build dashboard" },
-    { time: "23:20", msg: "Received task from Shanks" },
-    { time: "23:15", msg: "Heartbeat OK" },
-    { time: "23:10", msg: "Memory synced to Mem0" },
-    { time: "23:00", msg: "Session started" },
-  ];
+/* ─── Recent Events (from Convex) ─── */
+function RecentEvents({ agentId }: { agentId: string }) {
+  const { events } = useAgentEvents(agentId);
   return (
     <div className="glass rounded-xl p-5">
       <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-        <span>📜</span> Recent Sessions
+        <span>📜</span> Recent Events
       </h3>
       <div className="space-y-2">
-        {entries.map((e, i) => (
-          <div key={i} className="flex gap-3 text-xs">
-            <span className="text-gray-600 font-mono shrink-0">{e.time}</span>
-            <span className="text-gray-400">{e.msg}</span>
+        {events.length === 0 && <p className="text-xs text-gray-600 italic">No events recorded yet...</p>}
+        {events.slice(0, 8).map((ev) => (
+          <div key={ev._id} className="flex gap-3 text-xs">
+            <span className="text-gray-600 font-mono shrink-0">
+              {ev.eventType}
+            </span>
+            <span className="text-gray-400">{ev.description}</span>
           </div>
         ))}
       </div>
@@ -60,7 +58,7 @@ function SessionLog() {
 }
 
 /* ─── Memory view ─── */
-function MemoryView({ soul }: { soul: string | null }) {
+function MemoryView({ soul }: { soul: string | null | undefined }) {
   return (
     <div className="glass rounded-xl p-5">
       <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
@@ -73,7 +71,7 @@ function MemoryView({ soul }: { soul: string | null }) {
       )}
       <div className="mt-4 pt-3 border-t border-gray-800/50">
         <p className="text-[11px] text-gray-500 font-mono">
-          Memory backend: Mem0 Cloud • Synced via semantic search
+          Memory backend: Convex Cloud • Synced via real-time queries
         </p>
       </div>
     </div>
@@ -112,7 +110,6 @@ export default function AgentDetailPage() {
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-4xl mx-auto" style={{ animation: "fadeInUp 0.4s ease-out" }}>
-      {/* Header */}
       <button
         onClick={() => router.push("/")}
         className="text-xs text-gray-500 hover:text-blue-400 font-mono mb-6 flex items-center gap-1 transition-colors"
@@ -133,54 +130,45 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
-      {/* Current task */}
-      {agent.current_task && (
+      {agent.currentTask && (
         <div className="glass rounded-xl p-5 mb-4">
           <h3 className="text-sm font-bold text-gray-300 mb-2 flex items-center gap-2">
             <span>💭</span> Current Task
           </h3>
-          <p className="text-sm text-gray-300 font-mono">{agent.current_task}</p>
+          <p className="text-sm text-gray-300 font-mono">{agent.currentTask}</p>
         </div>
       )}
 
-      {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold font-mono text-emerald-400">{agent.tasks_completed}</p>
+          <p className="text-2xl font-bold font-mono text-emerald-400">{agent.tasksCompleted}</p>
           <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Completed</p>
         </div>
         <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold font-mono text-amber-400">{agent.tasks_pending}</p>
+          <p className="text-2xl font-bold font-mono text-amber-400">{agent.tasksPending}</p>
           <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Pending</p>
         </div>
         <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold font-mono text-red-400">{agent.tasks_blocked}</p>
+          <p className="text-2xl font-bold font-mono text-red-400">{agent.tasksBlocked}</p>
           <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Blocked</p>
         </div>
         <div className="glass rounded-xl p-4 text-center">
           <p className="text-2xl font-bold font-mono text-cyan-400">
-            ${(agent.tokens_today ?? 0).toLocaleString()}
+            {(agent.tokensToday ?? 0).toLocaleString()}
           </p>
           <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Tokens Today</p>
         </div>
       </div>
 
-      {/* Details */}
       <div className="glass rounded-xl p-5 mb-4">
         <h3 className="text-sm font-bold text-gray-300 mb-2">Details</h3>
         <InfoRow icon="🏠" label="Room" value={agent.room ?? "—"} />
-        <InfoRow
-          icon="❤️"
-          label="Last Heartbeat"
-          value={agent.last_heartbeat ? new Date(agent.last_heartbeat).toLocaleTimeString() : "—"}
-        />
-        <InfoRow icon="🆔" label="Agent ID" value={agent.id} />
+        <InfoRow icon="🆔" label="Agent ID" value={agent.agentId} />
       </div>
 
-      {/* Soul + Sessions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MemoryView soul={agent.soul} />
-        <SessionLog />
+        <RecentEvents agentId={agent.agentId} />
       </div>
     </div>
   );

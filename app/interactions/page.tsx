@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useDashboardStore } from "../../lib/store";
+import { useEvents, useStandups, useAgents } from "../../lib/hooks";
 import { motion } from "framer-motion";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -9,20 +9,28 @@ const TYPE_COLORS: Record<string, string> = {
   standup: "#10b981",
   escalation: "#ef4444",
   collaboration: "#8b5cf6",
+  task_completed: "#10b981",
+  error: "#ef4444",
+  heartbeat: "#6b7280",
 };
 const TYPE_ICONS: Record<string, string> = {
   delegation: "📋",
   standup: "☕",
   escalation: "🚨",
   collaboration: "🤝",
+  task_completed: "✅",
+  error: "❌",
+  heartbeat: "💓",
 };
 
 export default function InteractionsPage() {
-  const { interactions, standupMessages, agents } = useDashboardStore();
+  const { events } = useEvents(50);
+  const { standups } = useStandups(20);
+  const { agents } = useAgents();
 
   const agentLookup = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
-    agents.forEach(a => { m[a.id] = { name: a.name, emoji: a.emoji }; });
+    agents.forEach(a => { m[a.agentId] = { name: a.name, emoji: a.emoji }; });
     return m;
   }, [agents]);
 
@@ -36,39 +44,41 @@ export default function InteractionsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Interaction Log */}
+        {/* Event Log */}
         <div className="glass-card p-5 space-y-4">
           <h2 className="text-xs uppercase tracking-widest text-gray-500 font-mono flex items-center gap-2">
-            <span className="text-base">📡</span> Interaction Log
+            <span className="text-base">📡</span> Event Log
           </h2>
           <div className="space-y-3">
-            {interactions.map((inter, i) => {
-              const from = agentLookup[inter.from_agent];
-              const to = agentLookup[inter.to_agent];
+            {events.length === 0 && <p className="text-xs text-gray-600 italic">Nenhum evento registrado...</p>}
+            {events.map((ev, i) => {
+              const from = agentLookup[ev.agentId];
+              const to = ev.targetAgentId ? agentLookup[ev.targetAgentId] : null;
               return (
                 <motion.div
-                  key={inter.id}
+                  key={ev._id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   className="p-3 rounded-lg bg-ocean-900/50 border border-glass-border hover:border-opacity-30 transition-colors"
-                  style={{ borderLeftColor: TYPE_COLORS[inter.type], borderLeftWidth: 3 }}
+                  style={{ borderLeftColor: TYPE_COLORS[ev.eventType] ?? "#6b7280", borderLeftWidth: 3 }}
                 >
                   <div className="flex items-center gap-2 text-xs mb-1">
                     <span>{from?.emoji || "🤖"}</span>
-                    <span className="text-white font-medium">{from?.name || inter.from_agent}</span>
-                    <span className="text-gray-600">→</span>
-                    <span>{to?.emoji || "🤖"}</span>
-                    <span className="text-white font-medium">{to?.name || inter.to_agent}</span>
+                    <span className="text-white font-medium">{from?.name || ev.agentId}</span>
+                    {to && (
+                      <>
+                        <span className="text-gray-600">→</span>
+                        <span>{to.emoji}</span>
+                        <span className="text-white font-medium">{to.name}</span>
+                      </>
+                    )}
                     <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded"
-                      style={{ background: `${TYPE_COLORS[inter.type]}15`, color: TYPE_COLORS[inter.type] }}>
-                      {TYPE_ICONS[inter.type]} {inter.type}
+                      style={{ background: `${TYPE_COLORS[ev.eventType]}15`, color: TYPE_COLORS[ev.eventType] }}>
+                      {TYPE_ICONS[ev.eventType] ?? "📌"} {ev.eventType}
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-400">{inter.content}</p>
-                  <p className="text-[10px] text-gray-600 font-mono mt-1">
-                    {new Date(inter.timestamp).toLocaleTimeString()}
-                  </p>
+                  <p className="text-[11px] text-gray-400">{ev.description}</p>
                 </motion.div>
               );
             })}
@@ -81,21 +91,19 @@ export default function InteractionsPage() {
             <span className="text-base">☕</span> Standup Room
           </h2>
           <div className="space-y-3">
-            {standupMessages.map((msg, i) => (
+            {standups.length === 0 && <p className="text-xs text-gray-600 italic">Nenhum standup ainda...</p>}
+            {standups.map((msg, i) => (
               <motion.div
-                key={i}
+                key={msg._id}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08 }}
                 className="flex gap-3"
               >
-                <span className="text-2xl flex-shrink-0 mt-0.5">{msg.agent_emoji}</span>
+                <span className="text-2xl flex-shrink-0 mt-0.5">{msg.agentEmoji}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-semibold text-accent-blue">{msg.agent_name}</span>
-                    <span className="text-[10px] text-gray-600 font-mono">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </span>
+                    <span className="text-xs font-semibold text-accent-blue">{msg.agentName}</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-ocean-900/50 border border-glass-border">
                     <p className="text-xs text-gray-300 leading-relaxed">{msg.message}</p>
@@ -105,7 +113,6 @@ export default function InteractionsPage() {
             ))}
           </div>
 
-          {/* Input */}
           <div className="flex gap-2 pt-3 border-t border-glass-border">
             <input
               type="text"
@@ -123,10 +130,10 @@ export default function InteractionsPage() {
       {/* Network Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total Interactions", value: interactions.length.toString(), icon: "📡", color: "text-accent-blue" },
-          { label: "Delegations", value: interactions.filter(i => i.type === "delegation").length.toString(), icon: "📋", color: "text-accent-blue" },
-          { label: "Escalations", value: interactions.filter(i => i.type === "escalation").length.toString(), icon: "🚨", color: "text-accent-red" },
-          { label: "Collaborations", value: interactions.filter(i => i.type === "collaboration").length.toString(), icon: "🤝", color: "text-accent-purple" },
+          { label: "Total Events", value: events.length.toString(), icon: "📡", color: "text-accent-blue" },
+          { label: "Delegations", value: events.filter(i => i.eventType === "delegation").length.toString(), icon: "📋", color: "text-accent-blue" },
+          { label: "Errors", value: events.filter(i => i.eventType === "error").length.toString(), icon: "🚨", color: "text-accent-red" },
+          { label: "Collaborations", value: events.filter(i => i.eventType === "collaboration").length.toString(), icon: "🤝", color: "text-accent-purple" },
         ].map((kpi) => (
           <div key={kpi.label} className="kpi-card">
             <div className="text-lg mb-1">{kpi.icon}</div>

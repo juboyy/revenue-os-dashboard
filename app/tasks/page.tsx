@@ -1,26 +1,26 @@
 /**
  * Kanban Task Board — Drag-and-drop task management.
  * 5 columns: Backlog → In Progress → Review → Done → Blocked.
- * Uses HTML5 Drag API (no external lib). Tasks update in the Zustand store on drop.
+ * Uses HTML5 Drag API. Tasks update in Convex on drop.
  */
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useDashboardStore } from "../../lib/store";
+import { useTasks, useMoveTask, useAgents } from "../../lib/hooks";
 import { KANBAN_COLUMNS, PRIORITY_CONFIG } from "../../lib/types";
-import type { TaskItem, TaskStatus as TStatus, TaskPriority } from "../../lib/types";
+import type { TaskStatus as TStatus, TaskPriority } from "../../lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function TasksPage() {
-  const { tasks, moveTask, agents } = useDashboardStore();
-  // Drag state: which task is being dragged and which column is hovered
+  const { tasks } = useTasks();
+  const { agents } = useAgents();
+  const moveTask = useMoveTask();
+
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
-  // Filters: narrow down visible tasks by agent or priority
   const [filterAgent, setFilterAgent] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
 
-  // Apply agent + priority filters before grouping into columns
   const filteredTasks = useMemo(() => {
     let t = tasks;
     if (filterAgent !== "all") t = t.filter(x => x.assignee === filterAgent);
@@ -28,31 +28,27 @@ export default function TasksPage() {
     return t;
   }, [tasks, filterAgent, filterPriority]);
 
-  // Distribute filtered tasks into their respective kanban columns
   const tasksByCol = useMemo(() => {
-    const m: Record<string, TaskItem[]> = {};
+    const m: Record<string, typeof tasks> = {};
     KANBAN_COLUMNS.forEach(c => m[c.id] = []);
     filteredTasks.forEach(t => { if (m[t.status]) m[t.status].push(t); });
     return m;
   }, [filteredTasks]);
 
-  // Drag handlers — onDrop calls store.moveTask() to persist the column change
   const handleDragStart = useCallback((taskId: string) => setDraggedTask(taskId), []);
   const handleDragEnd = useCallback(() => { setDraggedTask(null); setDragOverCol(null); }, []);
   const handleDrop = useCallback((colId: string) => {
-    if (draggedTask) moveTask(draggedTask, colId as TStatus);
+    if (draggedTask) moveTask({ taskId: draggedTask, status: colId as TStatus });
     setDraggedTask(null);
     setDragOverCol(null);
   }, [draggedTask, moveTask]);
 
-  // Quick lookup: agent id → { name, emoji } for task card rendering
   const agentMap = useMemo(() => {
     const m: Record<string, { name: string; emoji: string }> = {};
-    agents.forEach(a => m[a.id] = { name: a.name, emoji: a.emoji });
+    agents.forEach(a => m[a.agentId] = { name: a.name, emoji: a.emoji });
     return m;
   }, [agents]);
 
-  // Summary KPIs displayed in the header
   const total = tasks.length;
   const done = tasks.filter(t => t.status === "done").length;
   const blocked = tasks.filter(t => t.status === "blocked").length;
@@ -60,7 +56,6 @@ export default function TasksPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-5">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -83,7 +78,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 items-center flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-500 uppercase font-mono">Agent:</span>
@@ -93,7 +87,7 @@ export default function TasksPage() {
             className="bg-ocean-900 text-xs text-gray-300 px-2 py-1.5 rounded-md border border-glass-border outline-none focus:border-accent-blue"
           >
             <option value="all">All Agents</option>
-            {agents.map(a => <option key={a.id} value={a.id}>{a.emoji} {a.name}</option>)}
+            {agents.map(a => <option key={a.agentId} value={a.agentId}>{a.emoji} {a.name}</option>)}
             <option value="">Unassigned</option>
           </select>
         </div>
@@ -112,13 +106,11 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Kanban Board */}
       <div className="kanban-board">
         {KANBAN_COLUMNS.map(col => {
           const colTasks = tasksByCol[col.id] || [];
           return (
             <div key={col.id} className="kanban-column">
-              {/* Column Header */}
               <div className="kanban-column-header">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{col.icon}</span>
@@ -129,8 +121,6 @@ export default function TasksPage() {
                   {colTasks.length}
                 </span>
               </div>
-
-              {/* Column Body */}
               <div
                 className={`kanban-column-body ${dragOverCol === col.id ? "drag-over" : ""}`}
                 onDragOver={e => { e.preventDefault(); setDragOverCol(col.id); }}
@@ -140,11 +130,11 @@ export default function TasksPage() {
                 <AnimatePresence>
                   {colTasks.map((task) => (
                     <TaskCard
-                      key={task.id}
+                      key={task.taskId}
                       task={task}
                       agentMap={agentMap}
-                      isDragging={draggedTask === task.id}
-                      onDragStart={() => handleDragStart(task.id)}
+                      isDragging={draggedTask === task.taskId}
+                      onDragStart={() => handleDragStart(task.taskId)}
                       onDragEnd={handleDragEnd}
                     />
                   ))}
@@ -163,10 +153,6 @@ export default function TasksPage() {
   );
 }
 
-/**
- * TaskCard — Draggable card with priority badge, title, description, assignee avatar.
- * Border-left color matches priority. Shows relative time since last update.
- */
 function TaskCard({
   task,
   agentMap,
@@ -174,15 +160,14 @@ function TaskCard({
   onDragStart,
   onDragEnd,
 }: {
-  task: TaskItem;
+  task: any;
   agentMap: Record<string, { name: string; emoji: string }>;
   isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
-  const pr = PRIORITY_CONFIG[task.priority];
+  const pr = PRIORITY_CONFIG[task.priority as TaskPriority] ?? PRIORITY_CONFIG.medium;
   const agent = task.assignee ? agentMap[task.assignee] : null;
-  const timeAgo = getTimeAgo(task.updated_at);
 
   return (
     <motion.div
@@ -196,20 +181,14 @@ function TaskCard({
       className={`kanban-card ${isDragging ? "dragging" : ""}`}
       style={{ borderLeft: `3px solid ${pr.color}` }}
     >
-      {/* Priority + Time */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
           style={{ color: pr.color, background: `${pr.color}15` }}>
           {pr.icon} {pr.label}
         </span>
-        <span className="text-[9px] text-gray-600 font-mono">{timeAgo}</span>
       </div>
-
-      {/* Title */}
       <h4 className="text-xs font-bold text-white mb-1 leading-snug">{task.title}</h4>
       <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{task.description}</p>
-
-      {/* Assignee */}
       <div className="flex items-center justify-between">
         {agent ? (
           <div className="flex items-center gap-1.5">
@@ -219,18 +198,8 @@ function TaskCard({
         ) : (
           <span className="text-[10px] text-gray-600 italic">Unassigned</span>
         )}
-        <span className="text-[9px] text-gray-700 font-mono">{task.id}</span>
+        <span className="text-[9px] text-gray-700 font-mono">{task.taskId}</span>
       </div>
     </motion.div>
   );
-}
-
-/** Converts ISO timestamp to a short relative string: "5m", "2h", or "3d" */
-function getTimeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 60) return `${min}m`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
-  return `${Math.floor(hr / 24)}d`;
 }

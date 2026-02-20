@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDashboardStore } from "../lib/store";
+import { useMetrics } from "../lib/hooks";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
@@ -19,8 +20,8 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, agents } = useDashboardStore();
-  const activeCount = agents.filter(a => a.status === "active" || a.status === "working").length;
+  const { sidebarCollapsed, toggleSidebar } = useDashboardStore();
+  const { metrics } = useMetrics();
 
   return (
     <motion.aside
@@ -100,8 +101,8 @@ export default function Sidebar() {
                 exit={{ opacity: 0 }}
                 className="text-[11px] font-mono"
               >
-                <span className="text-accent-green">{activeCount}</span>
-                <span className="text-gray-500"> / {agents.length} agentes online</span>
+                <span className="text-accent-green">{metrics.activeAgents}</span>
+                <span className="text-gray-500"> / {metrics.totalAgents} agentes online</span>
               </motion.div>
             )}
           </AnimatePresence>

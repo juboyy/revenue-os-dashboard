@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMonitoring } from "../../lib/hooks";
 import { useDashboardStore } from "../../lib/store";
 import type { MonitoringData } from "../../lib/types";
 import { motion } from "framer-motion";
@@ -21,7 +22,11 @@ const CHART_COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#06b6d4", "#e
 
 export default function MonitoringPage() {
   const [tab, setTab] = useState<Tab>("Overview");
-  const { monitoring } = useDashboardStore();
+  
+  // Try Convex first, fall back to Zustand mock
+  const { monitoring: convexMonitoring } = useMonitoring();
+  const { monitoring: storeMonitoring } = useDashboardStore();
+  const monitoring = (convexMonitoring as MonitoringData | null) ?? storeMonitoring;
 
   if (!monitoring) {
     return (

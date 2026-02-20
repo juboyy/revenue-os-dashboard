@@ -3,6 +3,7 @@ import { JetBrains_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "../components/Sidebar";
 import StoreInitializer from "../components/StoreInitializer";
+import ConvexClientProvider from "../components/ConvexClientProvider";
 
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -27,14 +28,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark">
       <body className={`${jetbrains.variable} ${inter.variable} font-sans bg-void text-gray-300 antialiased`}>
-        <StoreInitializer />
-        <div className="fixed inset-0 bg-grid-dots pointer-events-none z-0 opacity-40" />
-        <div className="relative z-10 h-screen flex">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            {children}
-          </main>
-        </div>
+        <ConvexClientProvider>
+          <StoreInitializer />
+          <div className="fixed inset-0 bg-grid-dots pointer-events-none z-0 opacity-40" />
+          <div className="relative z-10 h-screen flex">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto overflow-x-hidden">
+              {children}
+            </main>
+          </div>
+        </ConvexClientProvider>
       </body>
     </html>
   );
